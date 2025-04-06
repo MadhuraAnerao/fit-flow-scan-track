@@ -3,29 +3,33 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Device } from '@capacitor/device';
 import { toast } from 'sonner';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
-type User = {
+type UserHealthInfo = {
+  height?: number;
+  weight?: number;
+  allergies?: string[];
+  goal?: 'gain' | 'loss' | 'maintain';
+  dietPreference?: 'veg' | 'nonveg' | 'vegan';
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very-active';
+};
+
+type AppUser = {
   id: string;
   name: string;
   email: string;
-  healthInfo?: {
-    height?: number;
-    weight?: number;
-    allergies?: string[];
-    goal?: 'gain' | 'loss' | 'maintain';
-    dietPreference?: 'veg' | 'nonveg' | 'vegan';
-    activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very-active';
-  };
+  healthInfo?: UserHealthInfo;
   createdAt: Date;
 };
 
 type AuthContextType = {
-  user: User | null;
+  user: AppUser | null;
   isLoading: boolean;
   register: (email: string, password: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUserHealthInfo: (healthInfo: Partial<User['healthInfo']>) => Promise<void>;
+  updateUserHealthInfo: (healthInfo: Partial<UserHealthInfo>) => Promise<void>;
   checkBiometricAvailability: () => Promise<boolean>;
   authenticateWithBiometrics: () => Promise<boolean>;
 };
@@ -33,63 +37,83 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Mock user database for demo purposes
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      healthInfo: {
-        height: 175,
-        weight: 70,
-        allergies: ['peanuts'],
-        goal: 'maintain',
-        dietPreference: 'nonveg',
-        activityLevel: 'moderate'
-      },
-      createdAt: new Date('2023-01-15')
-    }
-  ];
+  // Map Supabase user to our AppUser type
+  const mapUserToAppUser = (user: User): AppUser => {
+    return {
+      id: user.id,
+      name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+      email: user.email || '',
+      healthInfo: user.user_metadata?.healthInfo,
+      createdAt: new Date(user.created_at)
+    };
+  };
 
   useEffect(() => {
-    // Check for stored user in localStorage
-    const storedUser = localStorage.getItem('fitnessAppUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        console.log('Auth state changed:', event);
+        setSession(newSession);
+        
+        if (newSession?.user) {
+          // Don't call other Supabase functions directly in the callback
+          // Use setTimeout to defer
+          setTimeout(() => {
+            const appUser = mapUserToAppUser(newSession.user);
+            setUser(appUser);
+          }, 0);
+        } else {
+          setUser(null);
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      if (currentSession?.user) {
+        const appUser = mapUserToAppUser(currentSession.user);
+        setUser(appUser);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const register = async (email: string, password: string, name: string) => {
     try {
       setIsLoading(true);
-      // Check if user already exists
-      const existingUser = mockUsers.find(u => u.email === email);
-      if (existingUser) {
-        throw new Error('User already exists');
-      }
-
-      // Create new user
-      const newUser: User = {
-        id: Date.now().toString(),
-        name,
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
-        createdAt: new Date()
-      };
-
-      // Store user in localStorage (in a real app, this would be a backend API call)
-      localStorage.setItem('fitnessAppUser', JSON.stringify(newUser));
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
       
-      // Update state
-      setUser(newUser);
-      toast.success('Account created successfully!');
+      if (error) throw error;
       
-      // Navigate to onboarding
-      navigate('/onboarding');
+      if (data.user) {
+        toast.success('Account created successfully! Please verify your email.');
+        
+        // Auto-login after registration
+        const appUser = mapUserToAppUser(data.user);
+        setUser(appUser);
+        
+        // Navigate to onboarding
+        navigate('/onboarding');
+      }
     } catch (error) {
       toast.error('Registration failed: ' + (error as Error).message);
       throw error;
@@ -101,38 +125,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      // Simple mock login (in a real app, this would validate against a backend)
-      const foundUser = mockUsers.find(u => u.email === email);
-      if (!foundUser) {
-        // For demo purposes, let's pretend any email/password works
-        const demoUser: User = {
-          id: '1',
-          name: 'Demo User',
-          email: email,
-          healthInfo: {
-            height: 175,
-            weight: 70,
-            allergies: ['peanuts'],
-            goal: 'maintain',
-            dietPreference: 'nonveg',
-            activityLevel: 'moderate'
-          },
-          createdAt: new Date()
-        };
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        const appUser = mapUserToAppUser(data.user);
+        setUser(appUser);
         
-        localStorage.setItem('fitnessAppUser', JSON.stringify(demoUser));
-        setUser(demoUser);
         toast.success('Logged in successfully!');
         
         // Navigate to home or onboarding depending on whether health info exists
-        navigate('/home');
-      } else {
-        localStorage.setItem('fitnessAppUser', JSON.stringify(foundUser));
-        setUser(foundUser);
-        toast.success('Logged in successfully!');
-        
-        // Navigate to home or onboarding depending on whether health info exists
-        if (foundUser.healthInfo) {
+        if (data.user.user_metadata?.healthInfo) {
           navigate('/home');
         } else {
           navigate('/onboarding');
@@ -147,26 +155,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    setUser(null);
-    localStorage.removeItem('fitnessAppUser');
-    navigate('/');
-    toast.success('Logged out successfully!');
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) throw error;
+      
+      setUser(null);
+      setSession(null);
+      navigate('/');
+      toast.success('Logged out successfully!');
+    } catch (error) {
+      toast.error('Logout failed: ' + (error as Error).message);
+    }
   };
 
-  const updateUserHealthInfo = async (healthInfo: Partial<User['healthInfo']>) => {
+  const updateUserHealthInfo = async (healthInfo: Partial<UserHealthInfo>) => {
     try {
       if (!user) throw new Error('No user is logged in');
       
-      const updatedUser = {
-        ...user,
-        healthInfo: {
-          ...user.healthInfo,
-          ...healthInfo
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          healthInfo: {
+            ...user.healthInfo,
+            ...healthInfo
+          }
         }
-      };
+      });
       
-      localStorage.setItem('fitnessAppUser', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      if (error) throw error;
+      
+      // Update local user state
+      setUser(prev => {
+        if (!prev) return null;
+        
+        return {
+          ...prev,
+          healthInfo: {
+            ...prev.healthInfo,
+            ...healthInfo
+          }
+        };
+      });
       
       return Promise.resolve();
     } catch (error) {
@@ -191,13 +220,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const authenticateWithBiometrics = async () => {
     try {
       // In a real app, we'd use a proper biometric authentication plugin
-      // For this demo, we'll simulate successful authentication
-      toast.success('Biometric authentication successful!');
+      // For this demo, we'll check if we have a stored session
+      const { data } = await supabase.auth.getSession();
       
-      // Simulate logging in the last user
-      const storedUser = localStorage.getItem('fitnessAppUser');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      if (data.session) {
+        toast.success('Biometric authentication successful!');
         navigate('/home');
         return true;
       }

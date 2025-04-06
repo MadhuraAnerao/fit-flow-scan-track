@@ -15,6 +15,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, register, checkBiometricAvailability, authenticateWithBiometrics, user } = useAuth();
   const navigate = useNavigate();
 
@@ -32,28 +33,55 @@ const LoginPage = () => {
     }
   }, [checkBiometricAvailability, user, navigate]);
 
+  const validateForm = () => {
+    if (!email.trim()) {
+      toast.error('Please enter your email');
+      return false;
+    }
+    
+    if (!password.trim() || password.length < 6) {
+      toast.error('Please enter a password (minimum 6 characters)');
+      return false;
+    }
+    
+    if (!isLogin && !name.trim()) {
+      toast.error('Please enter your name');
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!validateForm()) return;
+    
     try {
+      setIsSubmitting(true);
+      
       if (isLogin) {
         await login(email, password);
       } else {
-        if (!name.trim()) {
-          toast.error('Please enter your name');
-          return;
-        }
         await register(email, password, name);
       }
     } catch (error) {
       console.error('Auth error:', error);
+      // Error is already handled in the auth context
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleBiometricLogin = async () => {
-    const success = await authenticateWithBiometrics();
-    if (!success) {
-      toast.error('Biometric authentication failed');
+    try {
+      setIsSubmitting(true);
+      const success = await authenticateWithBiometrics();
+      if (!success) {
+        toast.error('Biometric authentication failed');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -149,8 +177,14 @@ const LoginPage = () => {
                     </div>
                   </div>
                   
-                  <Button type="submit" className="w-full fitness-gradient">
-                    {isLogin ? 'Sign In' : 'Create Account'}
+                  <Button 
+                    type="submit" 
+                    className="w-full fitness-gradient"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 
+                      (isLogin ? 'Signing In...' : 'Creating Account...') : 
+                      (isLogin ? 'Sign In' : 'Create Account')}
                   </Button>
                 </form>
               </TabsContent>
@@ -161,8 +195,12 @@ const LoginPage = () => {
                   <p className="text-center text-gray-600 mb-4">
                     Use your fingerprint or face recognition to sign in quickly and securely.
                   </p>
-                  <Button onClick={handleBiometricLogin} className="fitness-gradient">
-                    Authenticate
+                  <Button 
+                    onClick={handleBiometricLogin} 
+                    className="fitness-gradient"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Authenticating...' : 'Authenticate'}
                   </Button>
                 </div>
               </TabsContent>
