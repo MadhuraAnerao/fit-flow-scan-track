@@ -145,7 +145,7 @@ const QrScannerPage: React.FC = () => {
             Scan QR Code
           </TabsTrigger>
           <TabsTrigger value="generate" className="flex items-center gap-2">
-            <QRCode size={16} />
+            <QRCode size={16} value="icon" />
             Generate QR
           </TabsTrigger>
         </TabsList>
