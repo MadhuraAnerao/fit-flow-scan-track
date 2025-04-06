@@ -42,15 +42,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Map Supabase user to our AppUser type
-  const mapUserToAppUser = (user: User): AppUser => {
-    return {
-      id: user.id,
-      name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-      email: user.email || '',
-      healthInfo: user.user_metadata?.healthInfo,
-      createdAt: new Date(user.created_at)
-    };
+  // Map Supabase user and profile data to our AppUser type
+  const mapUserToAppUser = async (authUser: User): Promise<AppUser | null> => {
+    try {
+      // Fetch the user profile from the profiles table
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        throw error;
+      }
+
+      if (!profile) {
+        console.error('No profile found for user:', authUser.id);
+        return null;
+      }
+
+      return {
+        id: authUser.id,
+        name: profile.name || authUser.email?.split('@')[0] || 'User',
+        email: profile.email || authUser.email || '',
+        healthInfo: {
+          height: profile.height || undefined,
+          weight: profile.weight || undefined,
+          allergies: profile.allergies || [],
+          goal: profile.goal as 'gain' | 'loss' | 'maintain' | undefined,
+          dietPreference: profile.diet_preference as 'veg' | 'nonveg' | 'vegan' | undefined,
+          activityLevel: profile.activity_level as 'sedentary' | 'light' | 'moderate' | 'active' | 'very-active' | undefined,
+        },
+        createdAt: new Date(profile.created_at)
+      };
+    } catch (error) {
+      console.error('Error mapping user to AppUser:', error);
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -64,8 +93,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Don't call other Supabase functions directly in the callback
           // Use setTimeout to defer
           setTimeout(() => {
-            const appUser = mapUserToAppUser(newSession.user);
-            setUser(appUser);
+            mapUserToAppUser(newSession.user)
+              .then(appUser => {
+                if (appUser) {
+                  setUser(appUser);
+                } else {
+                  setUser(null);
+                }
+              })
+              .catch(() => setUser(null));
           }, 0);
         } else {
           setUser(null);
@@ -77,10 +113,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       if (currentSession?.user) {
-        const appUser = mapUserToAppUser(currentSession.user);
-        setUser(appUser);
+        mapUserToAppUser(currentSession.user)
+          .then(appUser => {
+            if (appUser) {
+              setUser(appUser);
+            } else {
+              setUser(null);
+            }
+            setIsLoading(false);
+          })
+          .catch(() => {
+            setUser(null);
+            setIsLoading(false);
+          });
+      } else {
+        setUser(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => {
@@ -107,12 +156,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         toast.success('Account created successfully! Please verify your email.');
         
-        // Auto-login after registration
-        const appUser = mapUserToAppUser(data.user);
-        setUser(appUser);
-        
-        // Navigate to onboarding
-        navigate('/onboarding');
+        // Wait a moment for profile to be created via trigger
+        setTimeout(async () => {
+          const appUser = await mapUserToAppUser(data.user!);
+          if (appUser) {
+            setUser(appUser);
+            // Navigate to onboarding
+            navigate('/onboarding');
+          }
+        }, 1000);
       }
     } catch (error) {
       toast.error('Registration failed: ' + (error as Error).message);
@@ -134,16 +186,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       if (data.user) {
-        const appUser = mapUserToAppUser(data.user);
-        setUser(appUser);
-        
-        toast.success('Logged in successfully!');
-        
-        // Navigate to home or onboarding depending on whether health info exists
-        if (data.user.user_metadata?.healthInfo) {
-          navigate('/home');
-        } else {
-          navigate('/onboarding');
+        const appUser = await mapUserToAppUser(data.user);
+        if (appUser) {
+          setUser(appUser);
+          
+          toast.success('Logged in successfully!');
+          
+          // Navigate to home or onboarding depending on whether health info exists
+          if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
+            navigate('/home');
+          } else {
+            navigate('/onboarding');
+          }
         }
       }
     } catch (error) {
@@ -173,14 +227,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (!user) throw new Error('No user is logged in');
       
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          healthInfo: {
-            ...user.healthInfo,
-            ...healthInfo
-          }
-        }
-      });
+      // Update the profiles table directly
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          height: healthInfo.height,
+          weight: healthInfo.weight,
+          allergies: healthInfo.allergies,
+          goal: healthInfo.goal,
+          diet_preference: healthInfo.dietPreference,
+          activity_level: healthInfo.activityLevel
+        })
+        .eq('id', user.id);
       
       if (error) throw error;
       

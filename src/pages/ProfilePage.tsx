@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFitness } from '../contexts/FitnessContext';
 import { useShakeDetection } from '../contexts/ShakeDetectionContext';
@@ -14,14 +14,17 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   User, Settings, LogOut, NotebookPen, Plus, Save,
-  Edit2, Trash, UserCircle2, SlidersHorizontal, BellRing
+  Edit2, Trash, UserCircle2, SlidersHorizontal, BellRing,
+  Upload, Loader2
 } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
   const { user, logout, updateUserHealthInfo } = useAuth();
-  const { notes, addNote, deleteNote } = useFitness();
+  const { notes, addNote, deleteNote, isLoading: notesLoading } = useFitness();
   const { isShakeEnabled, toggleShakeDetection, shakeThreshold, setShakeThreshold } = useShakeDetection();
   
   const [noteTitle, setNoteTitle] = useState('');
@@ -29,6 +32,68 @@ const ProfilePage: React.FC = () => {
   const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  
+  // Fetch profile image on component mount
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      if (user) {
+        try {
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('food_images')
+            .getPublicUrl(`profile/${user.id}`);
+            
+          // Check if the image exists
+          const checkImage = new Image();
+          checkImage.onload = () => setProfileImage(publicUrl);
+          checkImage.onerror = () => setProfileImage(null);
+          checkImage.src = publicUrl;
+        } catch (error) {
+          console.error('Error fetching profile image:', error);
+          setProfileImage(null);
+        }
+      }
+    };
+    
+    fetchProfileImage();
+  }, [user]);
+  
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0] || !user) {
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `profile/${user.id}`;
+      
+      const { error } = await supabase.storage
+        .from('food_images')
+        .upload(fileName, file, { 
+          upsert: true,
+          contentType: file.type
+        });
+      
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('food_images')
+        .getPublicUrl(fileName);
+        
+      setProfileImage(publicUrl);
+      toast.success('Profile image updated');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
   
   if (!user) {
     return (
@@ -38,19 +103,18 @@ const ProfilePage: React.FC = () => {
     );
   }
   
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteTitle.trim() || !noteContent.trim()) {
       toast.error('Please fill in both title and content');
       return;
     }
     
-    addNote({
+    await addNote({
       title: noteTitle,
       content: noteContent,
       date: new Date().toISOString(),
     });
     
-    toast.success('Note added successfully!');
     setNoteTitle('');
     setNoteContent('');
     setAddNoteDialogOpen(false);
@@ -81,12 +145,31 @@ const ProfilePage: React.FC = () => {
       {/* User Profile Card */}
       <Card className="mb-6">
         <CardContent className="flex items-center gap-4 pt-6">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src="" />
-            <AvatarFallback className="text-2xl bg-fitness-primary text-white">
-              {user.name?.charAt(0) || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="h-20 w-20">
+              {profileImage ? (
+                <AvatarImage src={profileImage} />
+              ) : (
+                <AvatarFallback className="text-2xl bg-fitness-primary text-white">
+                  {user.name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <label 
+              htmlFor="profileImageUpload" 
+              className="absolute -bottom-2 -right-2 bg-fitness-primary text-white p-1 rounded-full cursor-pointer"
+            >
+              {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+            </label>
+            <input 
+              id="profileImageUpload" 
+              type="file" 
+              accept="image/*" 
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={uploading}
+            />
+          </div>
           <div>
             <h2 className="text-xl font-bold">{user.name}</h2>
             <p className="text-gray-500">{user.email}</p>
@@ -225,7 +308,13 @@ const ProfilePage: React.FC = () => {
             </Dialog>
           </div>
           
-          {notes.length === 0 ? (
+          {notesLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </div>
+          ) : notes.length === 0 ? (
             <div className="text-center py-8 border border-dashed rounded-lg mt-4">
               <NotebookPen className="mx-auto text-gray-400 mb-2" size={32} />
               <p className="text-gray-500">No notes yet</p>
@@ -248,8 +337,8 @@ const ProfilePage: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => {
-                          deleteNote(note.id);
+                        onClick={async () => {
+                          await deleteNote(note.id);
                           toast.success('Note deleted');
                         }}
                       >

@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus, Flame, Calendar, Trash2, ArrowRight, 
-  CalendarDays, Dumbbell, PieChart, BarChart, TrendingUp
+  CalendarDays, Dumbbell, PieChart, BarChart, TrendingUp, Loader2
 } from 'lucide-react';
 import {
   BarChart as RechartsBarChart,
@@ -35,7 +36,8 @@ const CalorieTrackingPage: React.FC = () => {
     getTotalCaloriesForDay,
     getTotalCaloriesBurnedForDay,
     getNetCaloriesForDay,
-    getWeeklyCalorieSummary
+    getWeeklyCalorieSummary,
+    isLoading
   } = useFitness();
   
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -64,39 +66,37 @@ const CalorieTrackingPage: React.FC = () => {
     entry => entry.date.startsWith(selectedDate)
   );
   
-  const handleAddFood = () => {
+  const handleAddFood = async () => {
     if (!newFood || !foodCalories) {
       toast.error('Please fill in all required fields');
       return;
     }
     
-    addCalorieEntry({
+    await addCalorieEntry({
       date: new Date().toISOString(),
       mealType,
       foodName: newFood,
       calories: parseInt(foodCalories)
     });
     
-    toast.success('Food added successfully!');
     setNewFood('');
     setFoodCalories('');
     setAddFoodDialogOpen(false);
   };
   
-  const handleAddActivity = () => {
+  const handleAddActivity = async () => {
     if (!activityName || !activityDuration || !caloriesBurned) {
       toast.error('Please fill in all required fields');
       return;
     }
     
-    addActivityEntry({
+    await addActivityEntry({
       date: new Date().toISOString(),
       activityType: activityName,
       duration: parseInt(activityDuration),
       caloriesBurned: parseInt(caloriesBurned)
     });
     
-    toast.success('Activity added successfully!');
     setActivityName('');
     setActivityDuration('');
     setCaloriesBurned('');
@@ -111,6 +111,32 @@ const CalorieTrackingPage: React.FC = () => {
   const calorieProgress = Math.min(Math.round((caloriesConsumed / calorieGoal) * 100), 100);
   
   const weeklyData = getWeeklyCalorieSummary();
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4 pb-20 space-y-6">
+        <h1 className="text-2xl font-bold mb-6">Calorie Tracking</h1>
+        
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+        
+        <Skeleton className="h-16 mb-6" />
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container mx-auto p-4 pb-20">
