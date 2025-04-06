@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,7 +13,6 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 
-// Motivational quotes for fitness
 const motivationalQuotes = [
   "The only bad workout is the one that didn't happen.",
   "Your body can stand almost anything. It's your mind that you have to convince.",
@@ -40,11 +38,9 @@ const HomePage = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   
   useEffect(() => {
-    // Set a random motivational quote
     const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
     setQuote(motivationalQuotes[randomIndex]);
     
-    // Simulate loading delay for UI polish
     const timer = setTimeout(() => {
       setLoading(false);
     }, 1000);
@@ -52,11 +48,10 @@ const HomePage = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  // Calorie goal based on user's goal (simple calculation for demo)
   const getCalorieGoal = () => {
     if (!user?.healthInfo) return 2000;
     
-    const baseCalories = user.healthInfo.gender === 'female' ? 1800 : 2200;
+    const baseCalories = user.healthInfo.weight && user.healthInfo.weight < 70 ? 1800 : 2200;
     
     switch (user.healthInfo.goal) {
       case 'gain':
@@ -83,7 +78,6 @@ const HomePage = () => {
   
   return (
     <div className="w-full min-h-screen bg-gray-50 pb-16">
-      {/* Hero Section */}
       <section className="w-full fitness-gradient px-4 py-8 text-white">
         <div className="container mx-auto">
           <div className="flex items-center justify-between">
@@ -133,7 +127,6 @@ const HomePage = () => {
         </div>
       </section>
       
-      {/* Quick Actions */}
       <section className="px-4 py-6 -mt-5">
         <div className="grid grid-cols-4 gap-3">
           <Link to="/qr-scanner" className="flex flex-col items-center justify-center bg-white rounded-lg p-3 shadow-sm">
@@ -155,7 +148,6 @@ const HomePage = () => {
         </div>
       </section>
       
-      {/* Motivation Card */}
       <section className="px-4 py-2">
         <Card className="fitness-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
@@ -180,7 +172,6 @@ const HomePage = () => {
         </Card>
       </section>
       
-      {/* Features Section */}
       <section className="px-4 py-4">
         <h2 className="text-xl font-semibold mb-4">Features to Explore</h2>
         

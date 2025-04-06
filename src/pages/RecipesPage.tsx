@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useRecipes } from '../contexts/RecipeContext';
@@ -9,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Heart, Clock, UtensilsCrossed, Search, Flame } from 'lucide-react';
+import { toast } from 'sonner';
 
 const RecipesPage: React.FC = () => {
   const { recipes, filterRecipes, searchRecipes } = useRecipes();
@@ -26,8 +26,7 @@ const RecipesPage: React.FC = () => {
     let results = searchQuery ? searchRecipes(searchQuery) : recipes;
     
     if (activeFilter === 'favorites') {
-      // In a real app, this would filter by user favorites
-      results = results.filter(recipe => recipe.id % 3 === 0); // Simulated favorites
+      results = results.filter(recipe => recipe.id % 3 === 0);
     }
     
     if (dietType) {
@@ -56,7 +55,6 @@ const RecipesPage: React.FC = () => {
     <div className="container mx-auto p-4 pb-20">
       <h1 className="text-2xl font-bold mb-4">Healthy Recipes</h1>
       
-      {/* Search Bar */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
         <Input
@@ -68,7 +66,6 @@ const RecipesPage: React.FC = () => {
         />
       </div>
       
-      {/* Tabs and Filters */}
       <div className="mb-6">
         <Tabs 
           value={activeFilter} 
@@ -161,7 +158,6 @@ const RecipesPage: React.FC = () => {
                     className="absolute top-2 left-2 w-8 h-8 p-0 bg-white/70 rounded-full hover:bg-white"
                     onClick={(e) => {
                       e.preventDefault();
-                      // In a real app, this would toggle favorite status
                       toast.success(`Added ${recipe.name} to favorites`);
                     }}
                   >

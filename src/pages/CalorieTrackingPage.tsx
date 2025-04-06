@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format, startOfWeek, addDays } from 'date-fns';
 import { useFitness } from '../contexts/FitnessContext';
@@ -43,7 +42,6 @@ const CalorieTrackingPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedTab, setSelectedTab] = useState('daily');
   
-  // New entry form states
   const [newFood, setNewFood] = useState('');
   const [foodCalories, setFoodCalories] = useState('');
   const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
@@ -53,7 +51,6 @@ const CalorieTrackingPage: React.FC = () => {
   const [addFoodDialogOpen, setAddFoodDialogOpen] = useState(false);
   const [addActivityDialogOpen, setAddActivityDialogOpen] = useState(false);
   
-  // Calculate weekly dates
   const startOfCurrentWeek = startOfWeek(new Date());
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     return format(addDays(startOfCurrentWeek, i), 'yyyy-MM-dd');
@@ -106,14 +103,13 @@ const CalorieTrackingPage: React.FC = () => {
     setAddActivityDialogOpen(false);
   };
   
-  const calorieGoal = 2000; // In a real app, this would be based on user settings
+  const calorieGoal = 2000;
   const caloriesConsumed = getTotalCaloriesForDay(selectedDate);
-  const caloriesBurned = getTotalCaloriesBurnedForDay(selectedDate);
+  const dailyCaloriesBurned = getTotalCaloriesBurnedForDay(today);
   const netCalories = getNetCaloriesForDay(selectedDate);
   
   const calorieProgress = Math.min(Math.round((caloriesConsumed / calorieGoal) * 100), 100);
   
-  // Weekly data for chart
   const weeklyData = getWeeklyCalorieSummary();
   
   return (
@@ -137,7 +133,6 @@ const CalorieTrackingPage: React.FC = () => {
         </TabsList>
         
         <TabsContent value="daily">
-          {/* Date Selector */}
           <div className="flex items-center justify-between mb-4">
             <Button 
               variant="outline" 
@@ -156,7 +151,6 @@ const CalorieTrackingPage: React.FC = () => {
             </div>
           </div>
           
-          {/* Summary Cards */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <Card className="bg-fitness-light">
               <CardContent className="p-3 text-center">
@@ -168,7 +162,7 @@ const CalorieTrackingPage: React.FC = () => {
             <Card className="bg-red-50">
               <CardContent className="p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Burned</p>
-                <p className="text-xl font-bold">{caloriesBurned}</p>
+                <p className="text-xl font-bold">{dailyCaloriesBurned}</p>
                 <p className="text-xs">calories</p>
               </CardContent>
             </Card>
@@ -181,7 +175,6 @@ const CalorieTrackingPage: React.FC = () => {
             </Card>
           </div>
           
-          {/* Progress Bar */}
           <Card className="mb-6">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center justify-between">
@@ -203,7 +196,6 @@ const CalorieTrackingPage: React.FC = () => {
             </CardContent>
           </Card>
           
-          {/* Food Entries */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center">
@@ -317,7 +309,6 @@ const CalorieTrackingPage: React.FC = () => {
             )}
           </div>
           
-          {/* Activities */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center">
@@ -421,7 +412,6 @@ const CalorieTrackingPage: React.FC = () => {
         
         <TabsContent value="weekly">
           <div className="space-y-6">
-            {/* Weekly Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center">
@@ -454,7 +444,6 @@ const CalorieTrackingPage: React.FC = () => {
               </CardContent>
             </Card>
             
-            {/* Weekly Overview */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center">
