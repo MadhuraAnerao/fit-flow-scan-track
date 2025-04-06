@@ -79,8 +79,20 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       // Vibrate device
       await Haptics.vibrate();
       
-      // Show toast notification
-      toast.info("Shake detected! Navigating to random feature...");
+      // Show motivational notification
+      const motivationalMessages = [
+        "Keep going! You're doing great on your fitness journey!",
+        "Don't forget to track your calories today!",
+        "A little progress each day adds up to big results!",
+        "Stay hydrated and keep moving!",
+        "Remember your fitness goals for today!"
+      ];
+      
+      const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+      toast.info(randomMessage, {
+        description: "Shake detected! Stay motivated!",
+        duration: 5000
+      });
       
       // Update last shake action time
       setLastShakeAction(new Date());

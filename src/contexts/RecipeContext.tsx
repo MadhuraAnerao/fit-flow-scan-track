@@ -1,5 +1,7 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // Types for recipe data
 export type Recipe = {
@@ -17,15 +19,19 @@ export type Recipe = {
   servings: number;
   dietType: 'veg' | 'nonveg' | 'vegan';
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  source?: 'api' | 'user';
 };
 
 type RecipeContextType = {
   recipes: Recipe[];
   userRecipes: Recipe[];
+  isLoading: boolean;
+  error: string | null;
   addUserRecipe: (recipe: Omit<Recipe, 'id'>) => void;
   getRecipeById: (id: number) => Recipe | undefined;
-  searchRecipes: (query: string) => Recipe[];
+  searchRecipes: (query: string) => Promise<Recipe[]>;
   filterRecipes: (filters: RecipeFilters) => Recipe[];
+  refreshRecipes: () => Promise<void>;
 };
 
 type RecipeFilters = {
@@ -36,7 +42,7 @@ type RecipeFilters = {
 
 const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
 
-// Mock recipe data
+// Mock recipe data as fallback
 const mockRecipes: Recipe[] = [
   {
     id: 1,
@@ -495,38 +501,107 @@ const mockRecipes: Recipe[] = [
 ];
 
 export const RecipeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
   const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch recipes from API on component mount
+  useEffect(() => {
+    refreshRecipes();
+  }, []);
+  
+  // Fetch recipes from our Supabase Function (that calls external APIs)
+  const refreshRecipes = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase.functions.invoke('recipes');
+      
+      if (error) {
+        console.error('Error fetching recipes:', error);
+        setError('Failed to fetch recipes. Using local data instead.');
+        return;
+      }
+      
+      if (data && data.recipes) {
+        setRecipes(data.recipes);
+      }
+    } catch (err) {
+      console.error('Error in recipe fetch:', err);
+      setError('An unexpected error occurred. Using local data instead.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Add a new user recipe
   const addUserRecipe = (recipe: Omit<Recipe, 'id'>) => {
     const newRecipe = {
       ...recipe,
       id: Date.now(),
+      source: 'user' as const,
     };
     setUserRecipes(prev => [...prev, newRecipe]);
+    toast.success(`Added "${recipe.name}" to your recipes!`);
   };
   
   // Get recipe by ID from both preloaded and user recipes
   const getRecipeById = (id: number) => {
-    const allRecipes = [...mockRecipes, ...userRecipes];
+    const allRecipes = [...recipes, ...userRecipes];
     return allRecipes.find(recipe => recipe.id === id);
   };
   
   // Search recipes by name
-  const searchRecipes = (query: string) => {
-    const allRecipes = [...mockRecipes, ...userRecipes];
-    if (!query) return allRecipes;
+  const searchRecipes = async (query: string) => {
+    if (!query.trim()) return [...recipes, ...userRecipes];
     
-    query = query.toLowerCase();
-    return allRecipes.filter(recipe => 
-      recipe.name.toLowerCase().includes(query) ||
-      recipe.ingredients.some(ing => ing.toLowerCase().includes(query))
-    );
+    try {
+      setIsLoading(true);
+      
+      // Call our Supabase function with the search query
+      const { data, error } = await supabase.functions.invoke('recipes', {
+        body: { query: query.trim() }
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      let searchResults: Recipe[] = [];
+      
+      // Add API results
+      if (data && data.recipes) {
+        searchResults = data.recipes;
+      }
+      
+      // Add user recipes that match the query
+      const matchingUserRecipes = userRecipes.filter(recipe => 
+        recipe.name.toLowerCase().includes(query.toLowerCase()) ||
+        recipe.ingredients.some(ing => ing.toLowerCase().includes(query.toLowerCase()))
+      );
+      
+      return [...searchResults, ...matchingUserRecipes];
+    } catch (err) {
+      console.error('Error searching recipes:', err);
+      
+      // Fallback to local search if API fails
+      const allRecipes = [...recipes, ...userRecipes];
+      query = query.toLowerCase();
+      
+      return allRecipes.filter(recipe => 
+        recipe.name.toLowerCase().includes(query) ||
+        recipe.ingredients.some(ing => ing.toLowerCase().includes(query))
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Filter recipes based on criteria
   const filterRecipes = (filters: RecipeFilters) => {
-    const allRecipes = [...mockRecipes, ...userRecipes];
+    const allRecipes = [...recipes, ...userRecipes];
     
     return allRecipes.filter(recipe => {
       // Filter by diet type
@@ -549,12 +624,15 @@ export const RecipeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
   
   const value = {
-    recipes: mockRecipes,
+    recipes,
     userRecipes,
+    isLoading,
+    error,
     addUserRecipe,
     getRecipeById,
     searchRecipes,
     filterRecipes,
+    refreshRecipes
   };
   
   return <RecipeContext.Provider value={value}>{children}</RecipeContext.Provider>;
