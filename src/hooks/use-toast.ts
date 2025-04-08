@@ -138,7 +138,7 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+interface Toast extends Omit<ToasterToast, "id"> {}
 
 function toast({ ...props }: Toast) {
   const id = genId()
@@ -169,12 +169,17 @@ function toast({ ...props }: Toast) {
   }
 }
 
-// Add common toast types
-toast.success = (message: React.ReactNode) => toast({ title: message, variant: "success" })
-toast.error = (message: React.ReactNode) => toast({ title: message, variant: "destructive" })
-toast.warning = (message: React.ReactNode) => toast({ title: message, variant: "warning" })
-toast.info = (message: React.ReactNode) => toast({ title: message })
-toast.loading = (message: React.ReactNode) => toast({ title: message, variant: "loading" })
+// Add common toast types with correct typing
+toast.success = (message: string) => 
+  toast({ title: message, variant: "success" as any })
+toast.error = (message: string) => 
+  toast({ title: message, variant: "destructive" })
+toast.warning = (message: string) => 
+  toast({ title: message, variant: "warning" as any })
+toast.info = (message: string) => 
+  toast({ title: message })
+toast.loading = (message: string) => 
+  toast({ title: message, variant: "loading" as any })
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)

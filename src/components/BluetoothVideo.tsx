@@ -1,15 +1,19 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Bluetooth, 
   BluetoothConnected, 
   BluetoothOff, 
   Video,
-  VideoOff
+  VideoOff,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 // Add TypeScript interfaces for Web Bluetooth API
@@ -62,12 +66,15 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
   videoDescription,
   thumbnailUrl
 }) => {
+  const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isBluetoothAvailable, setIsBluetoothAvailable] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [connectedDevice, setConnectedDevice] = useState<string | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
-  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [videoProgress, setVideoProgress] = useState<number>(0);
 
   // Check if Bluetooth is available in the browser
   useEffect(() => {
@@ -78,16 +85,32 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     }
   }, []);
 
-  // Setup video element ref
+  // Setup video element event listeners
   useEffect(() => {
-    return () => {
-      if (videoElement) {
-        videoElement.pause();
-        videoElement.src = '';
-        videoElement.load();
-      }
-    };
-  }, [videoElement]);
+    const video = videoRef.current;
+    
+    if (video) {
+      const handleTimeUpdate = () => {
+        const progress = (video.currentTime / video.duration) * 100;
+        setVideoProgress(progress);
+      };
+      
+      const handleEnded = () => {
+        setIsVideoPlaying(false);
+        toast.info("Video playback completed");
+      };
+      
+      // Add event listeners
+      video.addEventListener('timeupdate', handleTimeUpdate);
+      video.addEventListener('ended', handleEnded);
+      
+      // Clean up
+      return () => {
+        video.removeEventListener('timeupdate', handleTimeUpdate);
+        video.removeEventListener('ended', handleEnded);
+      };
+    }
+  }, [toast]);
 
   // Request Bluetooth device and connect
   const connectBluetooth = async () => {
@@ -112,6 +135,11 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
           setIsConnected(false);
           setConnectedDevice(null);
           toast.error(`${device.name || 'Device'} disconnected`);
+          
+          if (videoRef.current && isVideoPlaying) {
+            videoRef.current.pause();
+            setIsVideoPlaying(false);
+          }
         });
 
         setConnectedDevice(device.name || 'Unknown Device');
@@ -128,12 +156,12 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
 
   // Disconnect from Bluetooth device
   const disconnectBluetooth = () => {
+    if (videoRef.current && isVideoPlaying) {
+      videoRef.current.pause();
+    }
     setIsConnected(false);
     setConnectedDevice(null);
-    if (videoElement) {
-      videoElement.pause();
-      setIsVideoPlaying(false);
-    }
+    setIsVideoPlaying(false);
     toast.info("Disconnected from Bluetooth device");
   };
 
@@ -144,21 +172,31 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
       return;
     }
     
-    if (videoElement) {
+    if (videoRef.current) {
       if (isVideoPlaying) {
-        videoElement.pause();
+        videoRef.current.pause();
         toast.info("Paused video playback");
+        setIsVideoPlaying(false);
       } else {
-        videoElement.play()
+        videoRef.current.play()
           .then(() => {
             toast.success(`Playing audio through ${connectedDevice || 'Bluetooth device'}`);
+            setIsVideoPlaying(true);
           })
           .catch(error => {
             console.error('Video playback error:', error);
             toast.error("Failed to play video. Please try again.");
           });
       }
-      setIsVideoPlaying(!isVideoPlaying);
+    }
+  };
+
+  // Toggle mute/unmute
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+      toast.info(isMuted ? "Audio unmuted" : "Audio muted");
     }
   };
 
@@ -187,29 +225,41 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
         ) : (
           <>
             <div className="relative aspect-video rounded-md overflow-hidden bg-gray-100 mb-4">
-              {isVideoPlaying ? (
-                <video 
-                  src={videoUrl} 
-                  controls 
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  ref={ref => setVideoElement(ref)}
-                />
-              ) : (
-                <div className="flex items-center justify-center w-full h-full bg-gray-800">
+              <video 
+                ref={videoRef}
+                src={videoUrl} 
+                poster={thumbnailUrl}
+                className="w-full h-full object-cover"
+                playsInline
+                controls={isVideoPlaying}
+                muted={isMuted}
+              />
+              
+              {!isVideoPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
                   {thumbnailUrl ? (
                     <img 
                       src={thumbnailUrl} 
                       alt={videoTitle} 
-                      className="w-full h-full object-cover opacity-60"
+                      className="absolute inset-0 w-full h-full object-cover opacity-60"
                     />
                   ) : null}
-                  <div className="absolute text-center">
-                    <VideoOff size={48} className="mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-300">
-                      {isConnected ? 'Click play to start' : 'Connect to a Bluetooth device'}
+                  <div className="absolute flex flex-col items-center">
+                    <Play size={64} className="text-white opacity-80 hover:opacity-100 cursor-pointer" 
+                         onClick={isConnected ? toggleVideo : connectBluetooth} />
+                    <p className="text-white mt-2">
+                      {isConnected ? 'Click to play' : 'Connect device to play'}
                     </p>
                   </div>
+                </div>
+              )}
+              
+              {isVideoPlaying && videoProgress > 0 && (
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-300">
+                  <div 
+                    className="h-full bg-blue-500" 
+                    style={{ width: `${videoProgress}%` }}
+                  />
                 </div>
               )}
             </div>
@@ -222,7 +272,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
                     <span>Connected to: {connectedDevice}</span>
                   </div>
                   
-                  <div className="flex space-x-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button 
                       onClick={toggleVideo} 
                       className="flex-1"
@@ -230,14 +280,25 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
                     >
                       {isVideoPlaying ? (
                         <>
-                          <VideoOff className="mr-2 h-4 w-4" />
-                          Pause Video
+                          <Pause className="mr-2 h-4 w-4" />
+                          Pause
                         </>
                       ) : (
                         <>
-                          <Video className="mr-2 h-4 w-4" />
-                          Play Video
+                          <Play className="mr-2 h-4 w-4" />
+                          Play
                         </>
+                      )}
+                    </Button>
+                    
+                    <Button 
+                      onClick={toggleMute}
+                      variant="outline"
+                    >
+                      {isMuted ? (
+                        <VolumeX className="h-4 w-4" />
+                      ) : (
+                        <Volume2 className="h-4 w-4" />
                       )}
                     </Button>
                     
