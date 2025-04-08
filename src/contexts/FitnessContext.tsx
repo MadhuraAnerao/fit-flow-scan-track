@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -14,6 +15,23 @@ type CalorieEntry = {
   fat?: number;
 };
 
+// Define the type for an activity entry
+type ActivityEntry = {
+  id: string;
+  date: string;
+  activityType: string;
+  duration: number;
+  caloriesBurned: number;
+};
+
+// Define the type for a note
+type Note = {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+};
+
 // Define the type for fitness stats
 type FitnessStats = {
   dailySteps: number;
@@ -28,24 +46,43 @@ type FitnessStats = {
   proteinGoal: number;
 };
 
+// Weekly data summary type
+type WeeklySummary = {
+  date: string;
+  intake: number;
+  burned: number;
+};
+
 // Define the type for the context
 type FitnessContextType = {
   calorieEntries: CalorieEntry[];
+  activityEntries: ActivityEntry[];
+  notes: Note[];
   todaysEntries: CalorieEntry[];
   stats: FitnessStats;
+  isLoading: boolean;
   totalCaloriesToday: number;
   totalProteinToday: number;
   totalCarbsToday: number;
   totalFatToday: number;
   remainingCalories: number;
-  addCalorieEntry: (entry: Omit<CalorieEntry, 'id'>) => void;
+  addCalorieEntry: (entry: Omit<CalorieEntry, 'id'>) => Promise<void>;
   removeCalorieEntry: (id: string) => void;
+  deleteCalorieEntry: (id: string) => void;
+  addActivityEntry: (entry: Omit<ActivityEntry, 'id'>) => Promise<void>;
+  deleteActivityEntry: (id: string) => void;
+  addNote: (note: Omit<Note, 'id'>) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
   updateWaterIntake: (amount: number) => void;
   updateDailySteps: (steps: number) => void;
   updateWeight: (weight: number) => void;
   updateCalorieGoal: (goal: number) => void;
   updateProteinGoal: (goal: number) => void;
   clearAllEntries: () => void;
+  getTotalCaloriesForDay: (date: string) => number;
+  getTotalCaloriesBurnedForDay: (date: string) => number;
+  getNetCaloriesForDay: (date: string) => number;
+  getWeeklyCalorieSummary: () => WeeklySummary[];
 };
 
 // Initialize default values for the context
@@ -58,6 +95,21 @@ export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const storedEntries = localStorage.getItem('calorieEntries');
     return storedEntries ? JSON.parse(storedEntries) : [];
   });
+
+  // State for activity entries
+  const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>(() => {
+    const storedActivities = localStorage.getItem('activityEntries');
+    return storedActivities ? JSON.parse(storedActivities) : [];
+  });
+
+  // State for notes
+  const [notes, setNotes] = useState<Note[]>(() => {
+    const storedNotes = localStorage.getItem('fitnessNotes');
+    return storedNotes ? JSON.parse(storedNotes) : [];
+  });
+
+  // Loading state
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // State for fitness stats
   const [stats, setStats] = useState<FitnessStats>(() => {
@@ -81,6 +133,16 @@ export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem('calorieEntries', JSON.stringify(calorieEntries));
   }, [calorieEntries]);
 
+  // Update localStorage when activityEntries changes
+  useEffect(() => {
+    localStorage.setItem('activityEntries', JSON.stringify(activityEntries));
+  }, [activityEntries]);
+
+  // Update localStorage when notes changes
+  useEffect(() => {
+    localStorage.setItem('fitnessNotes', JSON.stringify(notes));
+  }, [notes]);
+
   // Update localStorage when stats changes
   useEffect(() => {
     localStorage.setItem('fitnessStats', JSON.stringify(stats));
@@ -101,8 +163,40 @@ export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Calculate remaining calories for the day
   const remainingCalories = stats.calorieGoal - totalCaloriesToday;
 
+  // Get total calories for a specific day
+  const getTotalCaloriesForDay = (date: string): number => {
+    return calorieEntries.filter(entry => entry.date.startsWith(date))
+      .reduce((sum, entry) => sum + entry.calories, 0);
+  };
+
+  // Get total calories burned for a specific day
+  const getTotalCaloriesBurnedForDay = (date: string): number => {
+    return activityEntries.filter(entry => entry.date.startsWith(date))
+      .reduce((sum, entry) => sum + entry.caloriesBurned, 0);
+  };
+
+  // Get net calories for a specific day
+  const getNetCaloriesForDay = (date: string): number => {
+    return getTotalCaloriesForDay(date) - getTotalCaloriesBurnedForDay(date);
+  };
+
+  // Get weekly calorie summary
+  const getWeeklyCalorieSummary = (): WeeklySummary[] => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      return format(d, 'yyyy-MM-dd');
+    }).reverse();
+
+    return last7Days.map(date => ({
+      date: format(new Date(date), 'E'),
+      intake: getTotalCaloriesForDay(date),
+      burned: getTotalCaloriesBurnedForDay(date)
+    }));
+  };
+
   // Add a calorie entry
-  const addCalorieEntry = (entry: Omit<CalorieEntry, 'id'>) => {
+  const addCalorieEntry = async (entry: Omit<CalorieEntry, 'id'>) => {
     // Ensure mealType is one of the valid options
     const validMealType = (entry.mealType as string) === 'breakfast' || 
                           (entry.mealType as string) === 'lunch' || 
@@ -130,6 +224,50 @@ export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const removeCalorieEntry = (id: string) => {
     setCalorieEntries(prevEntries => prevEntries.filter(entry => entry.id !== id));
     toast.info('Calorie entry removed');
+  };
+
+  // Delete a calorie entry (alias for removeCalorieEntry)
+  const deleteCalorieEntry = (id: string) => {
+    removeCalorieEntry(id);
+  };
+
+  // Add an activity entry
+  const addActivityEntry = async (entry: Omit<ActivityEntry, 'id'>) => {
+    const newEntry: ActivityEntry = {
+      id: Date.now().toString(),
+      date: entry.date,
+      activityType: entry.activityType,
+      duration: entry.duration,
+      caloriesBurned: entry.caloriesBurned
+    };
+
+    setActivityEntries(prevEntries => [...prevEntries, newEntry]);
+    toast.success(`Added ${entry.activityType} activity`);
+  };
+
+  // Delete an activity entry
+  const deleteActivityEntry = (id: string) => {
+    setActivityEntries(prevEntries => prevEntries.filter(entry => entry.id !== id));
+    toast.info('Activity entry removed');
+  };
+
+  // Add a note
+  const addNote = async (note: Omit<Note, 'id'>) => {
+    const newNote: Note = {
+      id: Date.now().toString(),
+      title: note.title,
+      content: note.content,
+      date: note.date
+    };
+
+    setNotes(prevNotes => [...prevNotes, newNote]);
+    toast.success('Note added successfully');
+  };
+
+  // Delete a note
+  const deleteNote = async (id: string) => {
+    setNotes(prevNotes => prevNotes.filter(note => note.id !== id));
+    toast.info('Note removed');
   };
 
   // Update water intake
@@ -186,14 +324,17 @@ export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Clear all calorie entries
   const clearAllEntries = () => {
     setCalorieEntries([]);
-    toast.warn('All calorie entries cleared');
+    toast.warning('All calorie entries cleared');
   };
 
   // Value for the context provider
   const value: FitnessContextType = {
     calorieEntries,
+    activityEntries,
+    notes,
     todaysEntries,
     stats,
+    isLoading,
     totalCaloriesToday,
     totalProteinToday,
     totalCarbsToday,
@@ -201,12 +342,21 @@ export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ child
     remainingCalories,
     addCalorieEntry,
     removeCalorieEntry,
+    deleteCalorieEntry,
+    addActivityEntry,
+    deleteActivityEntry,
+    addNote,
+    deleteNote,
     updateWaterIntake,
     updateDailySteps,
     updateWeight,
     updateCalorieGoal,
     updateProteinGoal,
     clearAllEntries,
+    getTotalCaloriesForDay,
+    getTotalCaloriesBurnedForDay,
+    getNetCaloriesForDay,
+    getWeeklyCalorieSummary,
   };
 
   return (

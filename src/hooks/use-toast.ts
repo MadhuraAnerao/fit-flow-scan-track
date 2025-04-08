@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -167,6 +168,13 @@ function toast({ ...props }: Toast) {
     update,
   }
 }
+
+// Add common toast types
+toast.success = (message: React.ReactNode) => toast({ title: message, variant: "success" })
+toast.error = (message: React.ReactNode) => toast({ title: message, variant: "destructive" })
+toast.warning = (message: React.ReactNode) => toast({ title: message, variant: "warning" })
+toast.info = (message: React.ReactNode) => toast({ title: message })
+toast.loading = (message: React.ReactNode) => toast({ title: message, variant: "loading" })
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
