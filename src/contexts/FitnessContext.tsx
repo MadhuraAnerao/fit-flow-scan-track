@@ -1,10 +1,8 @@
-
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { addDays, format, parseISO, startOfDay } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+// Define the type for a single calorie entry
 type CalorieEntry = {
   id: string;
   date: string;
@@ -16,392 +14,210 @@ type CalorieEntry = {
   fat?: number;
 };
 
-type ActivityEntry = {
-  id: string;
-  date: string;
-  activityType: string;
-  duration: number; // in minutes
+// Define the type for fitness stats
+type FitnessStats = {
+  dailySteps: number;
+  weeklySteps: number[];
   caloriesBurned: number;
+  waterIntake: number;
+  sleepHours: number;
+  weight: number;
+  weightHistory: { date: string; weight: number }[];
+  weightGoal: number;
+  calorieGoal: number;
+  proteinGoal: number;
 };
 
-type FitnessNote = {
-  id: string;
-  date: string;
-  title: string;
-  content: string;
-};
-
+// Define the type for the context
 type FitnessContextType = {
   calorieEntries: CalorieEntry[];
-  activityEntries: ActivityEntry[];
-  notes: FitnessNote[];
-  addCalorieEntry: (entry: Omit<CalorieEntry, 'id'>) => Promise<void>;
-  addActivityEntry: (entry: Omit<ActivityEntry, 'id'>) => Promise<void>;
-  addNote: (note: Omit<FitnessNote, 'id'>) => Promise<void>;
-  deleteCalorieEntry: (id: string) => Promise<void>;
-  deleteActivityEntry: (id: string) => Promise<void>;
-  deleteNote: (id: string) => Promise<void>;
-  getTotalCaloriesForDay: (date: string) => number;
-  getTotalCaloriesBurnedForDay: (date: string) => number;
-  getNetCaloriesForDay: (date: string) => number;
-  getWeeklyCalorieSummary: () => { date: string; intake: number; burned: number }[];
-  isLoading: boolean;
+  todaysEntries: CalorieEntry[];
+  stats: FitnessStats;
+  totalCaloriesToday: number;
+  totalProteinToday: number;
+  totalCarbsToday: number;
+  totalFatToday: number;
+  remainingCalories: number;
+  addCalorieEntry: (entry: Omit<CalorieEntry, 'id'>) => void;
+  removeCalorieEntry: (id: string) => void;
+  updateWaterIntake: (amount: number) => void;
+  updateDailySteps: (steps: number) => void;
+  updateWeight: (weight: number) => void;
+  updateCalorieGoal: (goal: number) => void;
+  updateProteinGoal: (goal: number) => void;
+  clearAllEntries: () => void;
 };
 
+// Initialize default values for the context
 const FitnessContext = createContext<FitnessContextType | undefined>(undefined);
 
+// Provider component
 export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const [calorieEntries, setCalorieEntries] = useState<CalorieEntry[]>([]);
-  const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
-  const [notes, setNotes] = useState<FitnessNote[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // State for calorie entries
+  const [calorieEntries, setCalorieEntries] = useState<CalorieEntry[]>(() => {
+    const storedEntries = localStorage.getItem('calorieEntries');
+    return storedEntries ? JSON.parse(storedEntries) : [];
+  });
 
-  // Load data from Supabase when user changes
+  // State for fitness stats
+  const [stats, setStats] = useState<FitnessStats>(() => {
+    const storedStats = localStorage.getItem('fitnessStats');
+    return storedStats ? JSON.parse(storedStats) : {
+      dailySteps: 0,
+      weeklySteps: Array(7).fill(0),
+      caloriesBurned: 0,
+      waterIntake: 0,
+      sleepHours: 7,
+      weight: 70,
+      weightHistory: [],
+      weightGoal: 65,
+      calorieGoal: 2000,
+      proteinGoal: 100,
+    };
+  });
+
+  // Update localStorage when calorieEntries changes
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) {
-        setCalorieEntries([]);
-        setActivityEntries([]);
-        setNotes([]);
-        setIsLoading(false);
-        return;
-      }
+    localStorage.setItem('calorieEntries', JSON.stringify(calorieEntries));
+  }, [calorieEntries]);
 
-      setIsLoading(true);
-      try {
-        // Fetch calorie entries
-        const { data: calorieData, error: calorieError } = await supabase
-          .from('calorie_entries')
-          .select('*')
-          .order('date', { ascending: false });
+  // Update localStorage when stats changes
+  useEffect(() => {
+    localStorage.setItem('fitnessStats', JSON.stringify(stats));
+  }, [stats]);
 
-        if (calorieError) throw calorieError;
+  // Get today's date in YYYY-MM-DD format
+  const today = format(new Date(), 'yyyy-MM-dd');
 
-        // Fetch activity entries
-        const { data: activityData, error: activityError } = await supabase
-          .from('activity_entries')
-          .select('*')
-          .order('date', { ascending: false });
+  // Filter calorie entries for today
+  const todaysEntries = calorieEntries.filter(entry => entry.date.startsWith(today));
 
-        if (activityError) throw activityError;
+  // Calculate total calories, protein, carbs, and fat for today
+  const totalCaloriesToday = todaysEntries.reduce((sum, entry) => sum + entry.calories, 0);
+  const totalProteinToday = todaysEntries.reduce((sum, entry) => sum + (entry.protein || 0), 0);
+  const totalCarbsToday = todaysEntries.reduce((sum, entry) => sum + (entry.carbs || 0), 0);
+  const totalFatToday = todaysEntries.reduce((sum, entry) => sum + (entry.fat || 0), 0);
 
-        // Fetch notes
-        const { data: notesData, error: notesError } = await supabase
-          .from('fitness_notes')
-          .select('*')
-          .order('date', { ascending: false });
+  // Calculate remaining calories for the day
+  const remainingCalories = stats.calorieGoal - totalCaloriesToday;
 
-        if (notesError) throw notesError;
+  // Add a calorie entry
+  const addCalorieEntry = (entry: Omit<CalorieEntry, 'id'>) => {
+    // Ensure mealType is one of the valid options
+    const validMealType = (entry.mealType as string) === 'breakfast' || 
+                          (entry.mealType as string) === 'lunch' || 
+                          (entry.mealType as string) === 'dinner' || 
+                          (entry.mealType as string) === 'snack' 
+                        ? entry.mealType 
+                        : 'snack';
 
-        // Transform data to match expected formats
-        setCalorieEntries(calorieData.map(entry => ({
-          id: entry.id,
-          date: entry.date,
-          mealType: entry.meal_type as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-          foodName: entry.food_name,
-          calories: entry.calories,
-          protein: entry.protein,
-          carbs: entry.carbs,
-          fat: entry.fat
-        })));
-
-        setActivityEntries(activityData.map(entry => ({
-          id: entry.id,
-          date: entry.date,
-          activityType: entry.activity_type,
-          duration: entry.duration,
-          caloriesBurned: entry.calories_burned
-        })));
-
-        setNotes(notesData.map(note => ({
-          id: note.id,
-          date: note.date,
-          title: note.title,
-          content: note.content
-        })));
-      } catch (error) {
-        console.error('Error fetching fitness data:', error);
-        toast.error('Failed to load fitness data');
-      } finally {
-        setIsLoading(false);
-      }
+    const newEntry: CalorieEntry = {
+      id: Date.now().toString(),
+      date: entry.date,
+      mealType: validMealType,
+      foodName: entry.foodName,
+      calories: entry.calories,
+      protein: entry.protein,
+      carbs: entry.carbs,
+      fat: entry.fat
     };
 
-    fetchUserData();
-    
-    // Set up realtime subscription for data changes
-    if (user) {
-      const calorieChannel = supabase
-        .channel('calorieEntries')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'calorie_entries' }, 
-          () => {
-            fetchUserData();
-          }
-        )
-        .subscribe();
-        
-      const activityChannel = supabase
-        .channel('activityEntries')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'activity_entries' }, 
-          () => {
-            fetchUserData();
-          }
-        )
-        .subscribe();
-        
-      const notesChannel = supabase
-        .channel('fitnessNotes')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'fitness_notes' }, 
-          () => {
-            fetchUserData();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(calorieChannel);
-        supabase.removeChannel(activityChannel);
-        supabase.removeChannel(notesChannel);
-      };
-    }
-  }, [user]);
-
-  const addCalorieEntry = async (entry: Omit<CalorieEntry, 'id'>) => {
-    if (!user) {
-      toast.error('You must be logged in to add entries');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('calorie_entries')
-        .insert({
-          user_id: user.id,
-          date: entry.date,
-          meal_type: entry.mealType,
-          food_name: entry.foodName,
-          calories: entry.calories,
-          protein: entry.protein,
-          carbs: entry.carbs,
-          fat: entry.fat
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      const newEntry: CalorieEntry = {
-        id: data.id,
-        date: data.date,
-        mealType: data.meal_type,
-        foodName: data.food_name,
-        calories: data.calories,
-        protein: data.protein,
-        carbs: data.carbs,
-        fat: data.fat
-      };
-      
-      setCalorieEntries(prev => [newEntry, ...prev]);
-    } catch (error) {
-      console.error('Error adding calorie entry:', error);
-      toast.error('Failed to add calorie entry');
-    }
+    setCalorieEntries(prevEntries => [...prevEntries, newEntry]);
+    toast.success(`Added ${entry.foodName} to tracking`);
   };
 
-  const addActivityEntry = async (entry: Omit<ActivityEntry, 'id'>) => {
-    if (!user) {
-      toast.error('You must be logged in to add entries');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('activity_entries')
-        .insert({
-          user_id: user.id,
-          date: entry.date,
-          activity_type: entry.activityType,
-          duration: entry.duration,
-          calories_burned: entry.caloriesBurned
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      const newEntry: ActivityEntry = {
-        id: data.id,
-        date: data.date,
-        activityType: data.activity_type,
-        duration: data.duration,
-        caloriesBurned: data.calories_burned
-      };
-      
-      setActivityEntries(prev => [newEntry, ...prev]);
-    } catch (error) {
-      console.error('Error adding activity entry:', error);
-      toast.error('Failed to add activity entry');
-    }
+  // Remove a calorie entry
+  const removeCalorieEntry = (id: string) => {
+    setCalorieEntries(prevEntries => prevEntries.filter(entry => entry.id !== id));
+    toast.info('Calorie entry removed');
   };
 
-  const addNote = async (note: Omit<FitnessNote, 'id'>) => {
-    if (!user) {
-      toast.error('You must be logged in to add notes');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('fitness_notes')
-        .insert({
-          user_id: user.id,
-          date: note.date,
-          title: note.title,
-          content: note.content
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      const newNote: FitnessNote = {
-        id: data.id,
-        date: data.date,
-        title: data.title,
-        content: data.content
-      };
-      
-      setNotes(prev => [newNote, ...prev]);
-    } catch (error) {
-      console.error('Error adding note:', error);
-      toast.error('Failed to add note');
-    }
+  // Update water intake
+  const updateWaterIntake = (amount: number) => {
+    setStats(prevStats => ({ ...prevStats, waterIntake: amount }));
   };
 
-  const deleteCalorieEntry = async (id: string) => {
-    if (!user) {
-      toast.error('You must be logged in to delete entries');
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('calorie_entries')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      setCalorieEntries(prev => prev.filter(entry => entry.id !== id));
-    } catch (error) {
-      console.error('Error deleting calorie entry:', error);
-      toast.error('Failed to delete calorie entry');
-    }
+  // Update daily steps
+  const updateDailySteps = (steps: number) => {
+    setStats(prevStats => ({ ...prevStats, dailySteps: steps }));
   };
 
-  const deleteActivityEntry = async (id: string) => {
-    if (!user) {
-      toast.error('You must be logged in to delete entries');
-      return;
+  // Update weight
+  const updateWeight = (weight: number) => {
+    // Get today's date in YYYY-MM-DD format
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    // Check if there's already a weight entry for today
+    const existingEntryIndex = stats.weightHistory.findIndex(entry => entry.date === today);
+
+    if (existingEntryIndex !== -1) {
+      // Update the existing entry
+      const newWeightHistory = [...stats.weightHistory];
+      newWeightHistory[existingEntryIndex] = { date: today, weight: weight };
+
+      setStats(prevStats => ({
+        ...prevStats,
+        weight: weight,
+        weightHistory: newWeightHistory
+      }));
+    } else {
+      // Add a new weight entry
+      setStats(prevStats => ({
+        ...prevStats,
+        weight: weight,
+        weightHistory: [...prevStats.weightHistory, { date: today, weight: weight }]
+      }));
     }
-
-    try {
-      const { error } = await supabase
-        .from('activity_entries')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      setActivityEntries(prev => prev.filter(entry => entry.id !== id));
-    } catch (error) {
-      console.error('Error deleting activity entry:', error);
-      toast.error('Failed to delete activity entry');
-    }
+    toast.success('Weight updated successfully!');
   };
 
-  const deleteNote = async (id: string) => {
-    if (!user) {
-      toast.error('You must be logged in to delete notes');
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('fitness_notes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      setNotes(prev => prev.filter(note => note.id !== id));
-    } catch (error) {
-      console.error('Error deleting note:', error);
-      toast.error('Failed to delete note');
-    }
+  // Update calorie goal
+  const updateCalorieGoal = (goal: number) => {
+    setStats(prevStats => ({ ...prevStats, calorieGoal: goal }));
+    toast.success('Calorie goal updated!');
   };
 
-  const getTotalCaloriesForDay = (date: string) => {
-    const dayStart = startOfDay(parseISO(date)).toISOString();
-    return calorieEntries
-      .filter(entry => startOfDay(parseISO(entry.date)).toISOString() === dayStart)
-      .reduce((total, entry) => total + entry.calories, 0);
+  // Update protein goal
+  const updateProteinGoal = (goal: number) => {
+    setStats(prevStats => ({ ...prevStats, proteinGoal: goal }));
+    toast.success('Protein goal updated!');
   };
 
-  const getTotalCaloriesBurnedForDay = (date: string) => {
-    const dayStart = startOfDay(parseISO(date)).toISOString();
-    return activityEntries
-      .filter(entry => startOfDay(parseISO(entry.date)).toISOString() === dayStart)
-      .reduce((total, entry) => total + entry.caloriesBurned, 0);
+  // Clear all calorie entries
+  const clearAllEntries = () => {
+    setCalorieEntries([]);
+    toast.warn('All calorie entries cleared');
   };
 
-  const getNetCaloriesForDay = (date: string) => {
-    return getTotalCaloriesForDay(date) - getTotalCaloriesBurnedForDay(date);
-  };
-
-  const getWeeklyCalorieSummary = () => {
-    const today = new Date();
-    const summary = [];
-
-    for (let i = 6; i >= 0; i--) {
-      const date = addDays(today, -i);
-      const dateStr = format(date, 'yyyy-MM-dd');
-      
-      summary.push({
-        date: format(date, 'EEE'),
-        intake: getTotalCaloriesForDay(dateStr),
-        burned: getTotalCaloriesBurnedForDay(dateStr)
-      });
-    }
-
-    return summary;
-  };
-
-  const value = {
+  // Value for the context provider
+  const value: FitnessContextType = {
     calorieEntries,
-    activityEntries,
-    notes,
+    todaysEntries,
+    stats,
+    totalCaloriesToday,
+    totalProteinToday,
+    totalCarbsToday,
+    totalFatToday,
+    remainingCalories,
     addCalorieEntry,
-    addActivityEntry,
-    addNote,
-    deleteCalorieEntry,
-    deleteActivityEntry,
-    deleteNote,
-    getTotalCaloriesForDay,
-    getTotalCaloriesBurnedForDay,
-    getNetCaloriesForDay,
-    getWeeklyCalorieSummary,
-    isLoading
+    removeCalorieEntry,
+    updateWaterIntake,
+    updateDailySteps,
+    updateWeight,
+    updateCalorieGoal,
+    updateProteinGoal,
+    clearAllEntries,
   };
 
-  return <FitnessContext.Provider value={value}>{children}</FitnessContext.Provider>;
+  return (
+    <FitnessContext.Provider value={value}>
+      {children}
+    </FitnessContext.Provider>
+  );
 };
 
-export const useFitness = (): FitnessContextType => {
+// Custom hook to use the fitness context
+export const useFitness = () => {
   const context = useContext(FitnessContext);
   if (context === undefined) {
     throw new Error('useFitness must be used within a FitnessProvider');

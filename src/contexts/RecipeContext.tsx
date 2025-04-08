@@ -42,12 +42,12 @@ type RecipeFilters = {
 
 const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
 
-// Mock recipe data as fallback
+// Mock recipe data with better images
 const mockRecipes: Recipe[] = [
   {
     id: 1,
     name: "Greek Yogurt with Honey and Berries",
-    image: "https://source.unsplash.com/random/300x200/?yogurt",
+    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=500",
     calories: 220,
     protein: 15,
     carbs: 30,
@@ -72,7 +72,7 @@ const mockRecipes: Recipe[] = [
   {
     id: 2,
     name: "Grilled Chicken Salad",
-    image: "https://source.unsplash.com/random/300x200/?chicken-salad",
+    image: "https://images.unsplash.com/photo-1580013759032-c96505e24c1f?q=80&w=500",
     calories: 350,
     protein: 35,
     carbs: 15,
@@ -102,7 +102,7 @@ const mockRecipes: Recipe[] = [
   {
     id: 3,
     name: "Lentil Soup",
-    image: "https://source.unsplash.com/random/300x200/?lentil-soup",
+    image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?q=80&w=500",
     calories: 280,
     protein: 18,
     carbs: 40,
@@ -133,7 +133,7 @@ const mockRecipes: Recipe[] = [
   {
     id: 4,
     name: "Banana Oatmeal Smoothie",
-    image: "https://source.unsplash.com/random/300x200/?smoothie",
+    image: "https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?q=80&w=500",
     calories: 280,
     protein: 12,
     carbs: 50,
@@ -160,7 +160,7 @@ const mockRecipes: Recipe[] = [
   {
     id: 5,
     name: "Salmon with Roasted Vegetables",
-    image: "https://source.unsplash.com/random/300x200/?salmon",
+    image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=500",
     calories: 420,
     protein: 35,
     carbs: 20,

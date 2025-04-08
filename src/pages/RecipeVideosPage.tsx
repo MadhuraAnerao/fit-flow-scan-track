@@ -10,36 +10,41 @@ import { Label } from '@/components/ui/label';
 const videoData = [
   {
     id: 1,
-    title: "Perfect Healthy Smoothie",
-    url: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
-    duration: "3:45",
-    description: "Learn how to make the perfect protein-packed smoothie for post-workout recovery."
+    title: "Easy Chicken Stir Fry",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    thumbnailUrl: "https://images.unsplash.com/photo-1603508102227-7e55dc53d69c?q=80&w=500",
+    duration: "4:12",
+    description: "Learn how to make this quick and delicious chicken stir fry in under 20 minutes."
   },
   {
     id: 2,
     title: "15-Minute HIIT Workout",
-    url: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    thumbnailUrl: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=500",
     duration: "15:22",
     description: "A quick but effective high-intensity workout you can do anywhere."
   },
   {
     id: 3,
-    title: "Easy Meal Prep for the Week",
-    url: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
+    title: "Healthy Breakfast Smoothie Bowl",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    thumbnailUrl: "https://images.unsplash.com/photo-1591086432468-7b0a767afe5e?q=80&w=500",
     duration: "8:17",
-    description: "Prepare a week's worth of healthy meals in under an hour."
+    description: "Create a nutritious and delicious smoothie bowl that will give you energy all morning."
   },
   {
     id: 4,
     title: "Beginner's Guide to Yoga",
-    url: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    thumbnailUrl: "https://images.unsplash.com/photo-1588286840104-8957b019727f?q=80&w=500",
     duration: "22:05",
-    description: "Start your yoga journey with these beginner-friendly poses."
+    description: "Start your yoga journey with these beginner-friendly poses and sequences."
   },
   {
     id: 5,
     title: "Healthy Dinner in 20 Minutes",
-    url: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    thumbnailUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500",
     duration: "18:30",
     description: "Quick and nutritious dinner recipes perfect for busy weeknights."
   }
@@ -110,6 +115,7 @@ const RecipeVideosPage: React.FC = () => {
                 videoTitle={video.title}
                 videoDuration={video.duration}
                 videoDescription={video.description}
+                thumbnailUrl={video.thumbnailUrl}
               />
             ))
           ) : (

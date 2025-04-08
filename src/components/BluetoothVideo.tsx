@@ -12,24 +12,62 @@ import {
   VideoOff
 } from 'lucide-react';
 
+// Add TypeScript interfaces for Web Bluetooth API
+declare global {
+  interface Navigator {
+    bluetooth?: {
+      requestDevice(options: RequestDeviceOptions): Promise<BluetoothDevice>;
+    };
+  }
+
+  interface BluetoothDevice {
+    name: string | null;
+    gatt?: {
+      connect(): Promise<BluetoothRemoteGATTServer>;
+    };
+    addEventListener(
+      type: 'gattserverdisconnected', 
+      listener: EventListener
+    ): void;
+    removeEventListener(
+      type: 'gattserverdisconnected', 
+      listener: EventListener
+    ): void;
+  }
+
+  interface RequestDeviceOptions {
+    acceptAllDevices?: boolean;
+    filters?: Array<{ services: string[] }>;
+    optionalServices?: string[];
+  }
+
+  interface BluetoothRemoteGATTServer {
+    connect(): Promise<BluetoothRemoteGATTServer>;
+    disconnect(): void;
+  }
+}
+
 interface BluetoothVideoProps {
   videoUrl: string;
   videoTitle: string;
   videoDuration: string;
   videoDescription?: string;
+  thumbnailUrl?: string;
 }
 
 export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
   videoUrl,
   videoTitle,
   videoDuration,
-  videoDescription
+  videoDescription,
+  thumbnailUrl
 }) => {
   const [isBluetoothAvailable, setIsBluetoothAvailable] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [connectedDevice, setConnectedDevice] = useState<string | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
   // Check if Bluetooth is available in the browser
   useEffect(() => {
@@ -39,6 +77,17 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
       setIsBluetoothAvailable(false);
     }
   }, []);
+
+  // Setup video element ref
+  useEffect(() => {
+    return () => {
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.src = '';
+        videoElement.load();
+      }
+    };
+  }, [videoElement]);
 
   // Request Bluetooth device and connect
   const connectBluetooth = async () => {
@@ -81,7 +130,10 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
   const disconnectBluetooth = () => {
     setIsConnected(false);
     setConnectedDevice(null);
-    setIsVideoPlaying(false);
+    if (videoElement) {
+      videoElement.pause();
+      setIsVideoPlaying(false);
+    }
     toast.info("Disconnected from Bluetooth device");
   };
 
@@ -92,12 +144,21 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
       return;
     }
     
-    setIsVideoPlaying(!isVideoPlaying);
-    
-    if (!isVideoPlaying) {
-      toast.success(`Playing audio through ${connectedDevice || 'Bluetooth device'}`);
-    } else {
-      toast.info("Paused video playback");
+    if (videoElement) {
+      if (isVideoPlaying) {
+        videoElement.pause();
+        toast.info("Paused video playback");
+      } else {
+        videoElement.play()
+          .then(() => {
+            toast.success(`Playing audio through ${connectedDevice || 'Bluetooth device'}`);
+          })
+          .catch(error => {
+            console.error('Video playback error:', error);
+            toast.error("Failed to play video. Please try again.");
+          });
+      }
+      setIsVideoPlaying(!isVideoPlaying);
     }
   };
 
@@ -132,12 +193,20 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
                   controls 
                   className="w-full h-full object-cover"
                   autoPlay
+                  ref={ref => setVideoElement(ref)}
                 />
               ) : (
-                <div className="flex items-center justify-center w-full h-full">
-                  <div className="text-center">
+                <div className="flex items-center justify-center w-full h-full bg-gray-800">
+                  {thumbnailUrl ? (
+                    <img 
+                      src={thumbnailUrl} 
+                      alt={videoTitle} 
+                      className="w-full h-full object-cover opacity-60"
+                    />
+                  ) : null}
+                  <div className="absolute text-center">
                     <VideoOff size={48} className="mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-300">
                       {isConnected ? 'Click play to start' : 'Connect to a Bluetooth device'}
                     </p>
                   </div>
