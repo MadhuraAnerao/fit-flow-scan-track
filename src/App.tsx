@@ -15,6 +15,7 @@ import RecipesPage from "./pages/RecipesPage";
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import CalorieTrackingPage from "./pages/CalorieTrackingPage";
 import ProfilePage from "./pages/ProfilePage";
+import RecipeVideosPage from "./pages/RecipeVideosPage";
 
 // Context providers
 import { AuthProvider } from "./contexts/AuthContext";
@@ -83,6 +84,13 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <Layout>
             <RecipeDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/recipe-videos" element={
+        <ProtectedRoute>
+          <Layout>
+            <RecipeVideosPage />
           </Layout>
         </ProtectedRoute>
       } />

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { 
   LineChart, UtensilsCrossed, QrCode, 
-  Camera, RefreshCw, TrendingUp, Award, Heart 
+  Camera, RefreshCw, TrendingUp, Award, Heart, Video
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ const motivationalQuotes = [
 
 const HomePage = () => {
   const { user } = useAuth();
-  const { isShakeEnabled, toggleShakeDetection } = useShakeDetection();
+  const { isShakeEnabled, toggleShakeDetection, isTiltEnabled, toggleTiltDetection } = useShakeDetection();
   const { 
     getTotalCaloriesForDay, 
     getTotalCaloriesBurnedForDay, 
@@ -84,14 +85,24 @@ const HomePage = () => {
             <h1 className="text-3xl font-bold">
               {loading ? 'Loading...' : `Hi, ${user?.name?.split(' ')[0] || 'there'}!`}
             </h1>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="bg-white/20 hover:bg-white/30"
-              onClick={toggleShakeDetection}
-            >
-              {isShakeEnabled ? 'Shake: ON' : 'Shake: OFF'}
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="bg-white/20 hover:bg-white/30"
+                onClick={toggleShakeDetection}
+              >
+                {isShakeEnabled ? 'Shake: ON' : 'Shake: OFF'}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="bg-white/20 hover:bg-white/30"
+                onClick={toggleTiltDetection}
+              >
+                {isTiltEnabled ? 'Tilt: ON' : 'Tilt: OFF'}
+              </Button>
+            </div>
           </div>
           <p className="mt-2 opacity-90">
             {format(new Date(), 'EEEE, MMMM d, yyyy')}
@@ -128,7 +139,7 @@ const HomePage = () => {
       </section>
       
       <section className="px-4 py-6 -mt-5">
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-5 gap-3">
           <Link to="/qr-scanner" className="flex flex-col items-center justify-center bg-white rounded-lg p-3 shadow-sm">
             <QrCode size={24} className="text-fitness-primary" />
             <span className="text-xs mt-1">QR Scan</span>
@@ -144,6 +155,10 @@ const HomePage = () => {
           <Link to="/calories" className="flex flex-col items-center justify-center bg-white rounded-lg p-3 shadow-sm">
             <LineChart size={24} className="text-fitness-primary" />
             <span className="text-xs mt-1">Calories</span>
+          </Link>
+          <Link to="/recipe-videos" className="flex flex-col items-center justify-center bg-white rounded-lg p-3 shadow-sm">
+            <Video size={24} className="text-fitness-primary" />
+            <span className="text-xs mt-1">Videos</span>
           </Link>
         </div>
       </section>
@@ -204,6 +219,20 @@ const HomePage = () => {
             </Card>
           </Link>
           
+          <Link to="/recipe-videos">
+            <Card className="fitness-card hover:shadow-md transition-all duration-300">
+              <CardContent className="flex items-center p-4">
+                <div className="rounded-full bg-fitness-light p-3 mr-4">
+                  <Video className="text-fitness-primary" size={24} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium">Recipe Videos</h3>
+                  <p className="text-sm text-gray-500">Watch tutorials with Bluetooth audio</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          
           <Link to="/recipes">
             <Card className="fitness-card hover:shadow-md transition-all duration-300">
               <CardContent className="flex items-center p-4">
@@ -236,7 +265,7 @@ const HomePage = () => {
       
       <section className="px-4 py-4 mb-16">
         <p className="text-center text-xs text-gray-500">
-          FitFlow v1.0 • Remember to shake your device for surprise navigation!
+          FitFlow v1.0 • Shake or tilt your device for surprise navigation and health reminders!
         </p>
       </section>
     </div>
