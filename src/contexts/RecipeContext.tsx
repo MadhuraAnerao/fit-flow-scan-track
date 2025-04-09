@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -527,6 +526,9 @@ export const RecipeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       if (data && data.recipes) {
         setRecipes(data.recipes);
+      } else {
+        console.warn('No recipes returned from API');
+        setError('No recipes were returned. Using local data instead.');
       }
     } catch (err) {
       console.error('Error in recipe fetch:', err);

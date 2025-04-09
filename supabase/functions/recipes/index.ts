@@ -590,14 +590,29 @@ serve(async (req) => {
   }
 
   try {
+    // Parse query parameters from URL
     const url = new URL(req.url);
     const searchParams = url.searchParams;
     
     // Get parameters from request
     let query = '';
+    let bodyData = null;
+    
     if (req.method === 'POST') {
-      const body = await req.json();
-      query = body?.query || '';
+      try {
+        // Try to parse the request body if it exists
+        const contentType = req.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const text = await req.text();
+          if (text && text.trim().length > 0) {
+            bodyData = JSON.parse(text);
+            query = bodyData?.query || '';
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing request body:', error);
+        // Continue without body data if parsing fails
+      }
     } else {
       query = searchParams.get('query') || '';
     }
@@ -742,7 +757,10 @@ serve(async (req) => {
     console.error('Error:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        recipes: customRecipes // Fallback to returning custom recipes on error
+      }),
       {
         status: 500,
         headers: { 
