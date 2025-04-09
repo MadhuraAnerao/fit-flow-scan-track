@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { useShakeDetection } from '@/contexts/ShakeDetectionContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { ChefHat } from 'lucide-react';
 
 const videoData = [
   {
@@ -119,6 +122,18 @@ const RecipeVideosPage: React.FC = () => {
             />
           </CardHeader>
         </Card>
+      </section>
+
+      <section className="px-4 py-4">
+        <Link to="/recipes" className="block w-full mb-4">
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center gap-2 border-fitness-primary text-fitness-primary hover:bg-fitness-primary/10"
+          >
+            <ChefHat className="h-4 w-4" />
+            View All Recipes with Nutritional Info
+          </Button>
+        </Link>
       </section>
 
       <section className="px-4 py-2">

@@ -1,136 +1,96 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useMobile } from './hooks/use-mobile';
+import { supabase } from './integrations/supabase/client';
+import { AuthProvider } from './contexts/AuthContext';
+import { FitnessProvider } from './contexts/FitnessContext';
+import { ShakeDetectionProvider } from './contexts/ShakeDetectionContext';
+import { RecipeProvider } from './contexts/RecipeContext';
+import Layout from './components/Layout';
+import LoginPage from './pages/LoginPage';
+import OnboardingPage from './pages/OnboardingPage';
+import HomePage from './pages/HomePage';
+import RecipeVideosPage from './pages/RecipeVideosPage';
+import NotFound from './pages/NotFound';
+import ProfilePage from './pages/ProfilePage';
+import CalorieTrackingPage from './pages/CalorieTrackingPage';
+import CameraPage from './pages/CameraPage';
+import QrScannerPage from './pages/QrScannerPage';
+import RecipesPage from './pages/RecipesPage';
+import RecipeDetailPage from './pages/RecipeDetailPage';
 
-// Pages
-import LoginPage from "./pages/LoginPage";
-import OnboardingPage from "./pages/OnboardingPage";
-import HomePage from "./pages/HomePage";
-import QrScannerPage from "./pages/QrScannerPage";
-import CameraPage from "./pages/CameraPage";
-import RecipesPage from "./pages/RecipesPage";
-import RecipeDetailPage from "./pages/RecipeDetailPage";
-import CalorieTrackingPage from "./pages/CalorieTrackingPage";
-import ProfilePage from "./pages/ProfilePage";
-import RecipeVideosPage from "./pages/RecipeVideosPage";
+const App = () => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { isMobile } = useMobile();
 
-// Context providers
-import { AuthProvider } from "./contexts/AuthContext";
-import { FitnessProvider } from "./contexts/FitnessContext";
-import { RecipeProvider } from "./contexts/RecipeContext";
-import { ShakeDetectionProvider } from "./contexts/ShakeDetectionContext";
-import NotFound from "./pages/NotFound";
-import { Layout } from "./components/Layout";
-import { useAuth } from "./contexts/AuthContext";
+  useEffect(() => {
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-// Protected route component
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
-  }
-  
-  if (!user) {
-    return <Navigate to="/" />;
-  }
-  
-  return children;
-};
+    // Set up auth subscription
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
 
-const queryClient = new QueryClient();
+    return () => subscription?.unsubscribe();
+  }, []);
 
-const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<LoginPage />} />
-      <Route path="/onboarding" element={
-        <ProtectedRoute>
-          <OnboardingPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/home" element={
-        <ProtectedRoute>
-          <Layout>
-            <HomePage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/qr-scanner" element={
-        <ProtectedRoute>
-          <Layout>
-            <QrScannerPage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/camera" element={
-        <ProtectedRoute>
-          <Layout>
-            <CameraPage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/recipes" element={
-        <ProtectedRoute>
-          <Layout>
-            <RecipesPage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/recipes/:id" element={
-        <ProtectedRoute>
-          <Layout>
-            <RecipeDetailPage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/recipe-videos" element={
-        <ProtectedRoute>
-          <Layout>
-            <RecipeVideosPage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/calories" element={
-        <ProtectedRoute>
-          <Layout>
-            <CalorieTrackingPage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <Layout>
-            <ProfilePage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <Router>
+      <AuthProvider>
+        <FitnessProvider>
+          <ShakeDetectionProvider>
+            <RecipeProvider>
+              {loading ? (
+                <div className="flex items-center justify-center h-screen">
+                  <div className="text-center">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                    <p className="mt-2 text-sm text-gray-500">Loading...</p>
+                  </div>
+                </div>
+              ) : (
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+
+                  <Route
+                    path="/onboarding"
+                    element={
+                      user ? <OnboardingPage /> : <Navigate to="/login" />
+                    }
+                  />
+
+                  <Route
+                    path="/"
+                    element={
+                      user ? <Layout /> : <Navigate to="/login" />
+                    }
+                  >
+                    <Route index element={<HomePage />} />
+                    <Route path="profile" element={<ProfilePage />} />
+                    <Route path="tracking" element={<CalorieTrackingPage />} />
+                    <Route path="recipe-videos" element={<RecipeVideosPage />} />
+                    <Route path="camera" element={<CameraPage />} />
+                    <Route path="qr-scanner" element={<QrScannerPage />} />
+                    <Route path="recipes" element={<RecipesPage />} />
+                    <Route path="recipes/:id" element={<RecipeDetailPage />} />
+                  </Route>
+
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              )}
+            </RecipeProvider>
+          </ShakeDetectionProvider>
+        </FitnessProvider>
+      </AuthProvider>
+    </Router>
   );
 };
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <TooltipProvider>
-        <AuthProvider>
-          <FitnessProvider>
-            <RecipeProvider>
-              <ShakeDetectionProvider>
-                <AppRoutes />
-                <Toaster />
-                <Sonner />
-              </ShakeDetectionProvider>
-            </RecipeProvider>
-          </FitnessProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-);
 
 export default App;
