@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useIsMobile } from './hooks/use-mobile';
 import { supabase } from './integrations/supabase/client';
 import { AuthProvider } from './contexts/AuthContext';
@@ -69,7 +69,7 @@ const App = () => {
                   <Route
                     path="/"
                     element={
-                      user ? <Layout /> : <Navigate to="/login" />
+                      user ? <Layout><Outlet /></Layout> : <Navigate to="/login" />
                     }
                   >
                     <Route index element={<HomePage />} />
