@@ -10,43 +10,59 @@ import { Label } from '@/components/ui/label';
 const videoData = [
   {
     id: 1,
-    title: "Easy Chicken Stir Fry",
+    title: "Easy Chicken Stir Fry Recipe",
     url: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
     thumbnailUrl: "https://images.unsplash.com/photo-1603508102227-7e55dc53d69c?q=80&w=500",
     duration: "4:12",
-    description: "Learn how to make this quick and delicious chicken stir fry in under 20 minutes."
+    description: "Learn how to make this quick and delicious chicken stir fry in under 20 minutes with simple ingredients."
   },
   {
     id: 2,
-    title: "15-Minute HIIT Workout",
+    title: "15-Minute HIIT Workout for Weight Loss",
     url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
     thumbnailUrl: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=500",
     duration: "15:22",
-    description: "A quick but effective high-intensity workout you can do anywhere."
+    description: "A quick but effective high-intensity workout designed to boost metabolism and burn calories."
   },
   {
     id: 3,
-    title: "Healthy Breakfast Smoothie Bowl",
+    title: "Anti-Inflammatory Smoothie Bowl Recipe",
     url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
     thumbnailUrl: "https://images.unsplash.com/photo-1591086432468-7b0a767afe5e?q=80&w=500",
     duration: "8:17",
-    description: "Create a nutritious and delicious smoothie bowl that will give you energy all morning."
+    description: "Create a nutritious and anti-inflammatory smoothie bowl that will boost your immune system and fight inflammation."
   },
   {
     id: 4,
-    title: "Beginner's Guide to Yoga",
+    title: "Yoga for Better Digestion",
     url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     thumbnailUrl: "https://images.unsplash.com/photo-1588286840104-8957b019727f?q=80&w=500",
     duration: "22:05",
-    description: "Start your yoga journey with these beginner-friendly poses and sequences."
+    description: "Gentle yoga poses to improve digestion, reduce bloating and enhance your overall gut health."
   },
   {
     id: 5,
-    title: "Healthy Dinner in 20 Minutes",
+    title: "Mediterranean Diet 101: Healthy Dinner Ideas",
     url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
     thumbnailUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500",
     duration: "18:30",
-    description: "Quick and nutritious dinner recipes perfect for busy weeknights."
+    description: "Learn the basics of the heart-healthy Mediterranean diet with these simple dinner recipes."
+  },
+  {
+    id: 6,
+    title: "Meal Prep for Busy Week: Healthy Lunch Ideas",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    thumbnailUrl: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=500",
+    duration: "12:45",
+    description: "Prep 5 healthy lunches in under an hour to stay on track with your nutrition goals all week."
+  },
+  {
+    id: 7,
+    title: "Low-Impact Cardio Workout for Beginners",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+    thumbnailUrl: "https://images.unsplash.com/photo-1434682881908-b43d0467b798?q=80&w=500",
+    duration: "25:10",
+    description: "A gentle cardio workout that's easy on the joints but effective for cardiovascular health and weight management."
   }
 ];
 
@@ -70,7 +86,7 @@ const RecipeVideosPage: React.FC = () => {
       <section className="w-full fitness-gradient px-4 py-8 text-white">
         <div className="container mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold">Recipe Videos</h1>
+            <h1 className="text-3xl font-bold">Recipe & Health Videos</h1>
             <div className="flex items-center space-x-2">
               <Switch 
                 id="tilt-mode"
@@ -83,7 +99,7 @@ const RecipeVideosPage: React.FC = () => {
             </div>
           </div>
           <p className="opacity-90">
-            Connect your Bluetooth device to watch recipe tutorials
+            Connect your paired Bluetooth device to watch health and recipe tutorials
           </p>
         </div>
       </section>
@@ -93,7 +109,7 @@ const RecipeVideosPage: React.FC = () => {
           <CardHeader className="pb-2 pt-4">
             <CardTitle className="text-lg">Search Videos</CardTitle>
             <CardDescription>
-              Find recipe videos or fitness tutorials
+              Find nutrition videos, recipes, or fitness tutorials
             </CardDescription>
             <Input 
               placeholder="Search videos..." 
@@ -128,7 +144,7 @@ const RecipeVideosPage: React.FC = () => {
 
       <section className="px-4 py-4 mb-16">
         <p className="text-center text-xs text-gray-500">
-          Tilt your device or take steps to receive health reminders. Connect Bluetooth devices to enjoy audio through speakers or headphones.
+          Add your known Bluetooth devices to enjoy video content through your paired speakers or headphones.
         </p>
       </section>
     </div>

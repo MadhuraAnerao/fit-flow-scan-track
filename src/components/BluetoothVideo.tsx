@@ -8,13 +8,15 @@ import {
   Bluetooth, 
   BluetoothConnected, 
   BluetoothOff, 
-  Video,
-  VideoOff,
   Play,
   Pause,
   Volume2,
-  VolumeX
+  VolumeX,
+  Plus
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 // Add TypeScript interfaces for Web Bluetooth API
 declare global {
@@ -26,6 +28,7 @@ declare global {
 
   interface BluetoothDevice {
     name: string | null;
+    id?: string;
     gatt?: {
       connect(): Promise<BluetoothRemoteGATTServer>;
     };
@@ -41,7 +44,7 @@ declare global {
 
   interface RequestDeviceOptions {
     acceptAllDevices?: boolean;
-    filters?: Array<{ services: string[] }>;
+    filters?: Array<{ services?: string[], name?: string, namePrefix?: string }>;
     optionalServices?: string[];
   }
 
@@ -57,6 +60,11 @@ interface BluetoothVideoProps {
   videoDuration: string;
   videoDescription?: string;
   thumbnailUrl?: string;
+}
+
+interface KnownDevice {
+  name: string;
+  id?: string;
 }
 
 export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
@@ -75,6 +83,12 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [videoProgress, setVideoProgress] = useState<number>(0);
+  const [knownDevices, setKnownDevices] = useState<KnownDevice[]>(() => {
+    const saved = localStorage.getItem('knownBluetoothDevices');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [newDeviceName, setNewDeviceName] = useState<string>('');
+  const [isAddingDevice, setIsAddingDevice] = useState<boolean>(false);
 
   // Check if Bluetooth is available in the browser
   useEffect(() => {
@@ -84,6 +98,11 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
       setIsBluetoothAvailable(false);
     }
   }, []);
+
+  // Save known devices to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('knownBluetoothDevices', JSON.stringify(knownDevices));
+  }, [knownDevices]);
 
   // Setup video element event listeners
   useEffect(() => {
@@ -112,8 +131,25 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     }
   }, [toast]);
 
-  // Request Bluetooth device and connect
-  const connectBluetooth = async () => {
+  const addKnownDevice = () => {
+    if (newDeviceName.trim()) {
+      setKnownDevices([...knownDevices, { name: newDeviceName.trim() }]);
+      setNewDeviceName('');
+      setIsAddingDevice(false);
+      toast.success(`Added ${newDeviceName.trim()} to known devices`);
+    }
+  };
+
+  const removeKnownDevice = (index: number) => {
+    const updatedDevices = [...knownDevices];
+    const removedDevice = updatedDevices[index];
+    updatedDevices.splice(index, 1);
+    setKnownDevices(updatedDevices);
+    toast.info(`Removed ${removedDevice.name} from known devices`);
+  };
+
+  // Connect to a specific known device
+  const connectToDevice = async (deviceName: string) => {
     if (!navigator.bluetooth) {
       toast.error("Bluetooth not available on this device or browser");
       return;
@@ -121,11 +157,11 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
 
     try {
       setIsConnecting(true);
-      toast.info("Searching for Bluetooth devices...");
+      toast.info(`Searching for ${deviceName}...`);
 
-      // Request a Bluetooth device with the appropriate services
+      // Request a Bluetooth device with the specific name
       const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
+        filters: [{ name: deviceName }],
         // You can specify required services for audio devices
         // optionalServices: ['00001108-0000-1000-8000-00805f9b34fb'] // A2DP Sink service
       });
@@ -141,6 +177,16 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
             setIsVideoPlaying(false);
           }
         });
+
+        // If this is a newly discovered device with an ID, save it
+        if (device.id) {
+          const existingDeviceIndex = knownDevices.findIndex(d => d.name === device.name);
+          if (existingDeviceIndex >= 0 && !knownDevices[existingDeviceIndex].id) {
+            const updatedDevices = [...knownDevices];
+            updatedDevices[existingDeviceIndex].id = device.id;
+            setKnownDevices(updatedDevices);
+          }
+        }
 
         setConnectedDevice(device.name || 'Unknown Device');
         setIsConnected(true);
@@ -246,7 +292,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
                   ) : null}
                   <div className="absolute flex flex-col items-center">
                     <Play size={64} className="text-white opacity-80 hover:opacity-100 cursor-pointer" 
-                         onClick={isConnected ? toggleVideo : connectBluetooth} />
+                         onClick={isConnected ? toggleVideo : () => {}} />
                     <p className="text-white mt-2">
                       {isConnected ? 'Click to play' : 'Connect device to play'}
                     </p>
@@ -265,6 +311,74 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
             </div>
             
             <div className="flex flex-col space-y-3">
+              {knownDevices.length > 0 ? (
+                <div className="bg-gray-50 p-3 rounded-md mb-2">
+                  <h3 className="text-sm font-medium mb-2">Your Paired Devices</h3>
+                  <div className="space-y-2">
+                    {knownDevices.map((device, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                        <span>{device.name}</span>
+                        <div className="flex space-x-2">
+                          <Button 
+                            onClick={() => connectToDevice(device.name)}
+                            disabled={isConnecting || (isConnected && connectedDevice === device.name)}
+                            size="sm" 
+                            variant={connectedDevice === device.name ? "outline" : "default"}
+                          >
+                            {connectedDevice === device.name ? 'Connected' : 'Connect'}
+                          </Button>
+                          <Button 
+                            onClick={() => removeKnownDevice(index)}
+                            size="sm" 
+                            variant="destructive"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <Alert className="mb-2">
+                  <AlertTitle>No paired devices</AlertTitle>
+                  <AlertDescription>
+                    Add your Bluetooth devices below to start streaming audio
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <Dialog open={isAddingDevice} onOpenChange={setIsAddingDevice}>
+                <DialogTrigger asChild>
+                  <Button className="w-full" variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Bluetooth Device
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Bluetooth Device</DialogTitle>
+                    <DialogDescription>
+                      Enter the name of your Bluetooth device to add it to your known devices list.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Label htmlFor="device-name">Device Name</Label>
+                    <Input 
+                      id="device-name"
+                      value={newDeviceName}
+                      onChange={(e) => setNewDeviceName(e.target.value)}
+                      placeholder="e.g., My Bluetooth Speaker"
+                      className="mt-2"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={() => setIsAddingDevice(false)} variant="outline">Cancel</Button>
+                    <Button onClick={addKnownDevice} disabled={!newDeviceName.trim()}>Add Device</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
               {isConnected ? (
                 <>
                   <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-md flex items-center">
@@ -311,16 +425,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
                     </Button>
                   </div>
                 </>
-              ) : (
-                <Button 
-                  onClick={connectBluetooth} 
-                  disabled={isConnecting}
-                  className="w-full"
-                >
-                  <Bluetooth className="mr-2 h-4 w-4" />
-                  {isConnecting ? "Connecting..." : "Connect Bluetooth Device"}
-                </Button>
-              )}
+              ) : null}
             </div>
           </>
         )}
