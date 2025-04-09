@@ -73,8 +73,10 @@ const App = () => {
                     }
                   >
                     <Route index element={<HomePage />} />
+                    <Route path="home" element={<HomePage />} />
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="tracking" element={<CalorieTrackingPage />} />
+                    <Route path="calories" element={<CalorieTrackingPage />} />
                     <Route path="recipe-videos" element={<RecipeVideosPage />} />
                     <Route path="camera" element={<CameraPage />} />
                     <Route path="qr-scanner" element={<QrScannerPage />} />
