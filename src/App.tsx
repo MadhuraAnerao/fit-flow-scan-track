@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useMobile } from './hooks/use-mobile';
+import { useIsMobile } from './hooks/use-mobile';
 import { supabase } from './integrations/supabase/client';
 import { AuthProvider } from './contexts/AuthContext';
 import { FitnessProvider } from './contexts/FitnessContext';
 import { ShakeDetectionProvider } from './contexts/ShakeDetectionContext';
 import { RecipeProvider } from './contexts/RecipeContext';
-import Layout from './components/Layout';
+import { Layout } from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import HomePage from './pages/HomePage';
@@ -23,7 +23,7 @@ import RecipeDetailPage from './pages/RecipeDetailPage';
 const App = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { isMobile } = useMobile();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Check active session
