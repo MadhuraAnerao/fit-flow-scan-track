@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -108,7 +109,7 @@ const TabNavigator = () => {
 const TabIcon = ({ icon, color, size }) => {
   // In Expo we would use the Expo vector icons
   // For now using placeholder for compile
-  return <div style={{color, fontSize: size}}>{icon}</div>;
+  return <View style={{ width: size, height: size }}><Text style={{ color }}>{icon}</Text></View>;
 };
 
 const App = () => {
@@ -135,12 +136,9 @@ const App = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-2 text-sm text-gray-500">Loading...</p>
-        </div>
-      </div>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
     );
   }
 

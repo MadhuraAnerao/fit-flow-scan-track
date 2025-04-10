@@ -1,6 +1,6 @@
 
 import { registerRootComponent } from 'expo';
-import App from './App.tsx';
+import App from './App';
 import './index.css';
 
 // Register the main component
