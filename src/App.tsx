@@ -32,6 +32,7 @@ const Tab = createBottomTabNavigator();
 const TabNavigator = () => {
   return (
     <Tab.Navigator
+      id="MainTabNavigator"
       screenOptions={{
         tabBarActiveTintColor: '#3b82f6', // fitness-primary
         tabBarInactiveTintColor: 'gray',
