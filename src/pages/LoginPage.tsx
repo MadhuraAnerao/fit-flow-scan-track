@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +18,7 @@ const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const { login, register, checkBiometricAvailability, authenticateWithBiometrics, user } = useAuth();
-  const navigate = useNavigate();
+  const navigation = useNavigation();
 
   useEffect(() => {
     const checkBiometrics = async () => {
@@ -39,9 +38,9 @@ const LoginPage = () => {
 
     // If user is already logged in, redirect to home
     if (user) {
-      navigate('/home');
+      navigation.navigate('MainTabs' as never);
     }
-  }, [checkBiometricAvailability, user, navigate]);
+  }, [checkBiometricAvailability, user, navigation]);
 
   const validateForm = () => {
     if (!email.trim()) {

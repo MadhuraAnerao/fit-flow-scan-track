@@ -1,13 +1,16 @@
 
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useIsMobile } from './hooks/use-mobile';
 import { supabase } from './integrations/supabase/client';
 import { AuthProvider } from './contexts/AuthContext';
 import { FitnessProvider } from './contexts/FitnessContext';
 import { ShakeDetectionProvider } from './contexts/ShakeDetectionContext';
 import { RecipeProvider } from './contexts/RecipeContext';
-import { Layout } from './components/Layout';
+
+// Pages
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import HomePage from './pages/HomePage';
@@ -19,6 +22,94 @@ import CameraPage from './pages/CameraPage';
 import QrScannerPage from './pages/QrScannerPage';
 import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
+
+// Navigation setup
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Tab navigator for main app screens
+const TabNavigator = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: '#3b82f6', // fitness-primary
+        tabBarInactiveTintColor: 'gray',
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen 
+        name="Home" 
+        component={HomePage} 
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon icon="home" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="QR Scanner" 
+        component={QrScannerPage} 
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon icon="qrcode" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Camera" 
+        component={CameraPage} 
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon icon="camera" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Recipes" 
+        component={RecipesPage} 
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon icon="utensils" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Videos" 
+        component={RecipeVideosPage} 
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon icon="video" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Calories" 
+        component={CalorieTrackingPage} 
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon icon="chart-line" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfilePage}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon icon="user" color={color} size={size} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+// Helper component for tab icons
+const TabIcon = ({ icon, color, size }) => {
+  // In Expo we would use the Expo vector icons
+  // For now using placeholder for compile
+  return <div style={{color, fontSize: size}}>{icon}</div>;
+};
 
 const App = () => {
   const [user, setUser] = useState<any>(null);
@@ -42,56 +133,38 @@ const App = () => {
     return () => subscription?.unsubscribe();
   }, []);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+          <p className="mt-2 text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Router>
+    <NavigationContainer>
       <AuthProvider>
         <FitnessProvider>
           <ShakeDetectionProvider>
             <RecipeProvider>
-              {loading ? (
-                <div className="flex items-center justify-center h-screen">
-                  <div className="text-center">
-                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-                    <p className="mt-2 text-sm text-gray-500">Loading...</p>
-                  </div>
-                </div>
-              ) : (
-                <Routes>
-                  <Route path="/login" element={<LoginPage />} />
-
-                  <Route
-                    path="/onboarding"
-                    element={
-                      user ? <OnboardingPage /> : <Navigate to="/login" />
-                    }
-                  />
-
-                  <Route
-                    path="/"
-                    element={
-                      user ? <Layout><Outlet /></Layout> : <Navigate to="/login" />
-                    }
-                  >
-                    <Route index element={<HomePage />} />
-                    <Route path="home" element={<HomePage />} />
-                    <Route path="profile" element={<ProfilePage />} />
-                    <Route path="tracking" element={<CalorieTrackingPage />} />
-                    <Route path="calories" element={<CalorieTrackingPage />} />
-                    <Route path="recipe-videos" element={<RecipeVideosPage />} />
-                    <Route path="camera" element={<CameraPage />} />
-                    <Route path="qr-scanner" element={<QrScannerPage />} />
-                    <Route path="recipes" element={<RecipesPage />} />
-                    <Route path="recipes/:id" element={<RecipeDetailPage />} />
-                  </Route>
-
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              )}
+              <Stack.Navigator
+                initialRouteName={user ? "MainTabs" : "Login"}
+                screenOptions={{ headerShown: false }}
+              >
+                <Stack.Screen name="Login" component={LoginPage} />
+                <Stack.Screen name="Onboarding" component={OnboardingPage} />
+                <Stack.Screen name="MainTabs" component={TabNavigator} />
+                <Stack.Screen name="RecipeDetail" component={RecipeDetailPage} />
+                <Stack.Screen name="NotFound" component={NotFound} />
+              </Stack.Navigator>
             </RecipeProvider>
           </ShakeDetectionProvider>
         </FitnessProvider>
       </AuthProvider>
-    </Router>
+    </NavigationContainer>
   );
 };
 

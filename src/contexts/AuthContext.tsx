@@ -1,9 +1,10 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Device } from '@capacitor/device';
 import { toast } from 'sonner';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigation } from '@react-navigation/native';
 
 type UserHealthInfo = {
   height?: number;
@@ -39,8 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+  const navigation = useNavigation();
 
+  // Helper function to map Supabase user to our AppUser model
   const mapUserToAppUser = async (authUser: User): Promise<AppUser | null> => {
     try {
       const { data: profile, error } = await supabase
@@ -153,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const appUser = await mapUserToAppUser(data.user!);
           if (appUser) {
             setUser(appUser);
-            navigate('/onboarding');
+            navigation.navigate('Onboarding' as never);
           }
         }, 1000);
       }
@@ -181,15 +183,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (appUser) {
           setUser(appUser);
           
+          // Store email for biometric login
           localStorage.setItem('lastLoginEmail', email);
+          
+          // Store password for biometric auth simulation
+          // In a real app, this would be stored in secure keychain/keystore
           localStorage.setItem(`biometric_auth_${email}`, password);
           
           toast.success('Logged in successfully!');
           
+          // Navigate to home or onboarding depending on whether health info exists
           if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
-            navigate('/home');
+            navigation.navigate('MainTabs' as never);
           } else {
-            navigate('/onboarding');
+            navigation.navigate('Onboarding' as never);
           }
         }
       }
@@ -209,7 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(null);
       setSession(null);
-      navigate('/');
+      navigation.navigate('Login' as never);
       toast.success('Logged out successfully!');
     } catch (error) {
       toast.error('Logout failed: ' + (error as Error).message);
@@ -277,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (data.session) {
         toast.success('Biometric authentication successful!');
-        navigate('/home');
+        navigation.navigate('MainTabs' as never);
         return true;
       }
       
@@ -307,9 +314,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             toast.success('Biometric authentication successful!');
             
             if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
-              navigate('/home');
+              navigation.navigate('MainTabs' as never);
             } else {
-              navigate('/onboarding');
+              navigation.navigate('Onboarding' as never);
             }
             
             return true;
