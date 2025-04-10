@@ -8,7 +8,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, Headphones, PhoneCall, RotateCw } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { toast } from 'sonner';
 
 const videoData = [
   {
@@ -73,6 +75,7 @@ const RecipeVideosPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredVideos, setFilteredVideos] = useState(videoData);
   const { isTiltEnabled, toggleTiltDetection } = useShakeDetection();
+  const [showBluetoothInfo, setShowBluetoothInfo] = useState(true);
 
   useEffect(() => {
     // Filter videos based on search query
@@ -83,6 +86,23 @@ const RecipeVideosPage: React.FC = () => {
     
     setFilteredVideos(filtered);
   }, [searchQuery]);
+  
+  const dismissBluetoothInfo = () => {
+    setShowBluetoothInfo(false);
+    localStorage.setItem('bluetoothInfoDismissed', 'true');
+  };
+  
+  useEffect(() => {
+    const dismissed = localStorage.getItem('bluetoothInfoDismissed') === 'true';
+    setShowBluetoothInfo(!dismissed);
+  }, []);
+  
+  const handleRotateDevice = () => {
+    toast.info("Rotate your device for a better viewing experience", {
+      description: "Turn your phone to landscape mode to enjoy videos in fullscreen",
+      duration: 4000
+    });
+  };
 
   return (
     <div className="w-full min-h-screen bg-gray-50 pb-16">
@@ -102,10 +122,37 @@ const RecipeVideosPage: React.FC = () => {
             </div>
           </div>
           <p className="opacity-90">
-            Connect your paired Bluetooth device to watch health and recipe tutorials
+            Stream audio to your Bluetooth speakers or headphones
           </p>
+          <div className="flex items-center mt-2 text-sm">
+            <Headphones className="h-4 w-4 mr-1" />
+            <span>Connect your device to listen through Bluetooth</span>
+          </div>
         </div>
       </section>
+
+      {showBluetoothInfo && (
+        <section className="px-4 py-2">
+          <Alert className="bg-blue-50 border-blue-200">
+            <PhoneCall className="h-4 w-4" />
+            <AlertTitle>Bluetooth Audio Support</AlertTitle>
+            <AlertDescription>
+              <p className="mb-2">
+                Connect your Bluetooth headphones or speakers to stream audio. This feature works best on Chrome browser on Android, macOS, or Windows devices. Due to browser limitations, not all devices may connect successfully.
+              </p>
+              <div className="flex justify-between items-center mt-4">
+                <Button onClick={handleRotateDevice} size="sm" variant="outline" className="text-xs">
+                  <RotateCw className="h-3 w-3 mr-1" />
+                  Rotate for fullscreen
+                </Button>
+                <Button onClick={dismissBluetoothInfo} size="sm" variant="outline" className="text-xs">
+                  Dismiss
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </section>
+      )}
 
       <section className="px-4 py-6 -mt-5">
         <Card className="bg-white shadow-sm">
@@ -159,7 +206,9 @@ const RecipeVideosPage: React.FC = () => {
 
       <section className="px-4 py-4 mb-16">
         <p className="text-center text-xs text-gray-500">
-          Add your known Bluetooth devices to enjoy video content through your paired speakers or headphones.
+          Connect your Bluetooth devices to enjoy video content through your paired speakers or headphones.
+          <br />Tilt your device or press the 'T' key on desktop to see health tips.
+          <br />Shake your device or press the 'S' key on desktop for navigation shortcuts.
         </p>
       </section>
     </div>

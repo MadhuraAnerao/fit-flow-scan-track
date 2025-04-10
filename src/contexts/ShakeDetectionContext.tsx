@@ -4,6 +4,7 @@ import { Device } from '@capacitor/device';
 import { Haptics } from '@capacitor/haptics';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '../hooks/use-mobile';
 
 type ShakeDetectionContextType = {
   isShakeEnabled: boolean;
@@ -20,11 +21,36 @@ const ShakeDetectionContext = createContext<ShakeDetectionContextType | undefine
 export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isShakeEnabled, setIsShakeEnabled] = useState(true);
   const [isTiltEnabled, setIsTiltEnabled] = useState(true);
-  const [shakeThreshold, setShakeThreshold] = useState(8); // Lower threshold for better detection
+  const [shakeThreshold, setShakeThreshold] = useState(15); // Increased threshold for better detection
   const [lastShakeAction, setLastShakeAction] = useState<Date | null>(null);
   const [stepCount, setStepCount] = useState(0);
   const [lastTiltTime, setLastTiltTime] = useState(0);
+  const [isShakeDetected, setIsShakeDetected] = useState(false);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  
+  // Desktop shake/tilt simulation using keyboard
+  useEffect(() => {
+    if (!isMobile) {
+      const handleKeyPress = (event: KeyboardEvent) => {
+        // 'S' key for shake simulation
+        if (event.key === 's' && isShakeEnabled) {
+          console.log("Shake simulated with 'S' key");
+          handleShakeAction();
+        }
+        // 'T' key for tilt simulation
+        if (event.key === 't' && isTiltEnabled) {
+          console.log("Tilt simulated with 'T' key");
+          handleTiltAction();
+        }
+      };
+      
+      window.addEventListener('keydown', handleKeyPress);
+      return () => {
+        window.removeEventListener('keydown', handleKeyPress);
+      };
+    }
+  }, [isMobile, isShakeEnabled, isTiltEnabled]);
   
   // Shake detection logic with improved sensitivity
   useEffect(() => {
@@ -65,8 +91,14 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
             // Only need one strong shake to trigger
             if (shakeCount >= 1) {
               console.log('Shake action triggered!');
+              setIsShakeDetected(true);
               handleShakeAction();
               shakeCount = 0;
+              
+              // Reset shake detection after a delay
+              setTimeout(() => {
+                setIsShakeDetected(false);
+              }, 2000);
             }
           }
         }
@@ -105,13 +137,17 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       }
     } else {
       console.log('DeviceMotion is not available on this device');
-      toast.warning('Shake detection not available on this device');
+      if (isMobile) {
+        toast.warning('Shake detection not available on this device');
+      } else {
+        toast.info("Shake simulation active. Press 'S' to simulate shake");
+      }
     }
     
     return () => {
       window.removeEventListener('devicemotion', handleMotion, true);
     };
-  }, [isShakeEnabled, shakeThreshold]);
+  }, [isShakeEnabled, shakeThreshold, isMobile]);
   
   // Tilt and step detection
   useEffect(() => {
@@ -126,7 +162,7 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       const currentTime = new Date().getTime();
       
       // Only process orientation events every 1000ms to avoid too many notifications
-      if (currentTime - lastTiltTime < 1000) {
+      if (currentTime - lastTiltTime < 2000) {
         return;
       }
       
@@ -134,8 +170,12 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       const beta = event.beta || 0; // Front-to-back tilt
       const gamma = event.gamma || 0; // Left-to-right tilt
       
+      // Logging for debugging
+      console.log(`Orientation - Alpha: ${event.alpha}, Beta: ${beta}, Gamma: ${gamma}`);
+      
       // Check for significant tilting movement
       if (Math.abs(beta) > 45 || Math.abs(gamma) > 45) {
+        console.log('Significant tilt detected', {beta, gamma});
         setLastTiltTime(currentTime);
         handleTiltAction();
       }
@@ -174,8 +214,38 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       lastAccZ = z;
     };
     
+    // Check if device orientation events are available
     if (typeof DeviceOrientationEvent !== 'undefined') {
+      console.log('DeviceOrientation is available, adding event listener');
       window.addEventListener('deviceorientation', handleOrientation, true);
+      
+      // Try to request permission on iOS 13+
+      try {
+        // Use type assertion to access the requestPermission method
+        const DeviceOrientationEventAny = DeviceOrientationEvent as any;
+        if (typeof DeviceOrientationEventAny.requestPermission === 'function') {
+          DeviceOrientationEventAny.requestPermission()
+            .then((response: string) => {
+              if (response === 'granted') {
+                console.log('Orientation permission granted');
+                window.addEventListener('deviceorientation', handleOrientation, true);
+              } else {
+                console.log('Orientation permission denied');
+                toast.error('Orientation detection permission denied');
+              }
+            })
+            .catch(console.error);
+        }
+      } catch (error) {
+        console.error('Error requesting orientation permission:', error);
+      }
+    } else {
+      console.log('DeviceOrientation is not available on this device');
+      if (isMobile) {
+        toast.warning('Tilt detection not available on this device');
+      } else {
+        toast.info("Tilt simulation active. Press 'T' to simulate tilt");
+      }
     }
     
     if (typeof DeviceMotionEvent !== 'undefined') {
@@ -186,7 +256,7 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       window.removeEventListener('deviceorientation', handleOrientation, true);
       window.removeEventListener('devicemotion', handleMotionForSteps, true);
     };
-  }, [isTiltEnabled, lastTiltTime, stepCount]);
+  }, [isTiltEnabled, lastTiltTime, stepCount, isMobile]);
   
   const handleShakeAction = async () => {
     try {
@@ -199,7 +269,10 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
         "Don't forget to track your calories today!",
         "A little progress each day adds up to big results!",
         "Stay hydrated and keep moving!",
-        "Remember your fitness goals for today!"
+        "Remember your fitness goals for today!",
+        "Push yourself because no one else is going to do it for you!",
+        "The only bad workout is the one that didn't happen!",
+        "Your body can stand almost anything. It's your mind you have to convince."
       ];
       
       const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
@@ -212,7 +285,7 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       setLastShakeAction(new Date());
       
       // Navigate to a random page
-      const randomPages = ['/home', '/recipes', '/calories', '/profile', '/qr-scanner'];
+      const randomPages = ['/home', '/recipes', '/calories', '/profile', '/recipe-videos'];
       const randomIndex = Math.floor(Math.random() * randomPages.length);
       navigate(randomPages[randomIndex]);
       
@@ -235,12 +308,15 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
         "An apple a day keeps the doctor away.",
         "Let food be thy medicine and medicine be thy food.",
         "Walking is man's best medicine.",
-        "Health is a state of complete harmony of the body, mind, and spirit."
+        "Health is a state of complete harmony of the body, mind, and spirit.",
+        "The part can never be well unless the whole is well.",
+        "To keep the body in good health is a duty... otherwise we shall not be able to keep our mind strong and clear.",
+        "Physical fitness is not only one of the most important keys to a healthy body, it is the basis of dynamic and creative intellectual activity."
       ];
       
       const randomQuote = healthQuotes[Math.floor(Math.random() * healthQuotes.length)];
       toast.info(randomQuote, {
-        description: "Health reminder",
+        description: "Health reminder (tilt detected)",
         duration: 4000
       });
       
@@ -278,6 +354,9 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
     setIsShakeEnabled(prev => !prev);
     if (!isShakeEnabled) {
       toast.success("Shake detection enabled!");
+      if (!isMobile) {
+        toast.info("Desktop mode: Press 'S' key to simulate shake");
+      }
     } else {
       toast.info("Shake detection disabled");
     }
@@ -287,6 +366,9 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
     setIsTiltEnabled(prev => !prev);
     if (!isTiltEnabled) {
       toast.success("Tilt and step detection enabled!");
+      if (!isMobile) {
+        toast.info("Desktop mode: Press 'T' key to simulate tilt");
+      }
     } else {
       toast.info("Tilt and step detection disabled");
     }
