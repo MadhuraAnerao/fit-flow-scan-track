@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Fingerprint, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const LoginPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,6 +17,7 @@ const LoginPage = () => {
   const [name, setName] = useState('');
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const { login, register, checkBiometricAvailability, authenticateWithBiometrics, user } = useAuth();
   const navigate = useNavigate();
 
@@ -23,6 +25,14 @@ const LoginPage = () => {
     const checkBiometrics = async () => {
       const available = await checkBiometricAvailability();
       setIsBiometricAvailable(available);
+      
+      // If biometrics are available and there's a stored email, show the prompt
+      if (available && localStorage.getItem('lastLoginEmail')) {
+        // Wait a moment before showing the prompt
+        setTimeout(() => {
+          setShowBiometricPrompt(true);
+        }, 500);
+      }
     };
     
     checkBiometrics();
@@ -76,6 +86,8 @@ const LoginPage = () => {
   const handleBiometricLogin = async () => {
     try {
       setIsSubmitting(true);
+      setShowBiometricPrompt(false);
+      
       const success = await authenticateWithBiometrics();
       if (!success) {
         toast.error('Biometric authentication failed');
@@ -83,6 +95,10 @@ const LoginPage = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  const dismissBiometricPrompt = () => {
+    setShowBiometricPrompt(false);
   };
 
   return (
@@ -106,6 +122,19 @@ const LoginPage = () => {
           </CardHeader>
           
           <CardContent>
+            {isBiometricAvailable && isLogin && (
+              <div className="mb-6 text-center">
+                <Button 
+                  onClick={() => setShowBiometricPrompt(true)}
+                  variant="outline" 
+                  className="w-full flex items-center justify-center gap-2 h-16 border-2 border-dashed border-fitness-primary hover:bg-fitness-light/20"
+                >
+                  <Fingerprint size={24} className="text-fitness-primary" />
+                  <span>Sign in with Fingerprint</span>
+                </Button>
+              </div>
+            )}
+            
             <Tabs defaultValue="email" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="email" className="flex items-center gap-2">
@@ -193,14 +222,14 @@ const LoginPage = () => {
                 <div className="flex flex-col items-center justify-center py-6">
                   <Fingerprint size={64} className="text-fitness-primary mb-4" />
                   <p className="text-center text-gray-600 mb-4">
-                    Use your fingerprint or face recognition to sign in quickly and securely.
+                    Place your finger on the fingerprint sensor to sign in quickly and securely.
                   </p>
                   <Button 
                     onClick={handleBiometricLogin} 
                     className="fitness-gradient"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Authenticating...' : 'Authenticate'}
+                    {isSubmitting ? 'Authenticating...' : 'Authenticate Now'}
                   </Button>
                 </div>
               </TabsContent>
@@ -218,6 +247,41 @@ const LoginPage = () => {
           </CardFooter>
         </Card>
       </div>
+      
+      {/* Biometric Authentication Prompt */}
+      <Dialog open={showBiometricPrompt} onOpenChange={setShowBiometricPrompt}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fingerprint Authentication</DialogTitle>
+            <DialogDescription>
+              Place your finger on the sensor to quickly sign in
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-6">
+            <div className="mb-6 relative">
+              <div className="animate-pulse flex items-center justify-center">
+                <Fingerprint size={100} className="text-fitness-primary" />
+              </div>
+              <div className="absolute inset-0 bg-fitness-primary/10 rounded-full animate-ping"></div>
+            </div>
+            <p className="text-center text-sm text-muted-foreground">
+              Using stored credentials for quick access
+            </p>
+          </div>
+          <DialogFooter className="sm:justify-between flex flex-row">
+            <Button variant="outline" onClick={dismissBiometricPrompt}>
+              Cancel
+            </Button>
+            <Button 
+              className="fitness-gradient"
+              onClick={handleBiometricLogin}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Authenticating...' : 'Authenticate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

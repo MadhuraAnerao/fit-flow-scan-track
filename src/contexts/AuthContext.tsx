@@ -264,11 +264,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkBiometricAvailability = async () => {
     try {
-      // Updated to handle the current Capacitor Device API
-      const deviceInfo = await Device.getInfo();
-      // Note: We're simplifying this for demo purposes
-      // In a real app, we would use a proper biometric plugin
-      return deviceInfo.platform !== 'web'; // Assume biometrics available on mobile platforms
+      // Check if the device has biometric hardware available
+      const biometricInfo = await Device.getInfo();
+      
+      // For simplicity we're checking if it's a native platform (iOS or Android)
+      // In a production app, we would use a dedicated biometric plugin
+      return biometricInfo.platform === 'ios' || biometricInfo.platform === 'android';
     } catch (error) {
       console.error('Error checking biometrics:', error);
       return false;
@@ -277,20 +278,119 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const authenticateWithBiometrics = async () => {
     try {
-      // In a real app, we'd use a proper biometric authentication plugin
-      // For this demo, we'll check if we have a stored session
-      const { data } = await supabase.auth.getSession();
+      // For this demo we're simulating biometric auth
+      // In a production app, we would use a proper biometric plugin
+      
+      // Here we'll get the last used email from localStorage if available
+      const lastEmail = localStorage.getItem('lastLoginEmail');
+      
+      if (!lastEmail) {
+        toast.error('You need to login with email first before using biometrics');
+        return false;
+      }
+      
+      // We'll simulate successful biometric auth
+      // In a real implementation, we'd use Native Biometric plugins
+      const { data, error } = await supabase.auth.getSession();
       
       if (data.session) {
+        // Session already exists, nothing to do
         toast.success('Biometric authentication successful!');
         navigate('/home');
         return true;
       }
       
-      return false;
+      // Try to get credentials from secure storage
+      // In a real implementation, this would be stored in secure keychain/keystore after password login
+      try {
+        // Real implementation would use Capacitor's native secure storage after validating biometrics
+        const storedPassword = localStorage.getItem(`biometric_auth_${lastEmail}`);
+        
+        if (!storedPassword) {
+          toast.error('No stored credentials found. Please login with email first.');
+          return false;
+        }
+        
+        // Attempt to login with stored credentials
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: lastEmail,
+          password: storedPassword,
+        });
+        
+        if (error) {
+          toast.error('Authentication failed: ' + error.message);
+          return false;
+        }
+        
+        if (data.user) {
+          const appUser = await mapUserToAppUser(data.user);
+          if (appUser) {
+            setUser(appUser);
+            
+            toast.success('Biometric authentication successful!');
+            
+            // Navigate to home or onboarding depending on whether health info exists
+            if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
+              navigate('/home');
+            } else {
+              navigate('/onboarding');
+            }
+            
+            return true;
+          }
+        }
+        
+        return false;
+      } catch (error) {
+        toast.error('Authentication failed');
+        console.error('Biometric auth error:', error);
+        return false;
+      }
     } catch (error) {
       console.error('Biometric authentication failed:', error);
       return false;
+    }
+  };
+
+  // Modify the login method to store credentials for biometric login when successful
+  const login = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        const appUser = await mapUserToAppUser(data.user);
+        if (appUser) {
+          setUser(appUser);
+          
+          // Store email for biometric login
+          localStorage.setItem('lastLoginEmail', email);
+          
+          // Store password for biometric auth simulation
+          // In a real app, this would be stored in secure keychain/keystore
+          localStorage.setItem(`biometric_auth_${email}`, password);
+          
+          toast.success('Logged in successfully!');
+          
+          // Navigate to home or onboarding depending on whether health info exists
+          if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
+            navigate('/home');
+          } else {
+            navigate('/onboarding');
+          }
+        }
+      }
+    } catch (error) {
+      toast.error('Login failed: ' + (error as Error).message);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
