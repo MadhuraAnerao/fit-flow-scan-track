@@ -46,18 +46,16 @@ const ProtectedProfilePage: React.FC = () => {
         return;
       }
 
-      const result = await NativeBiometric.verifyIdentity({
+      await NativeBiometric.verifyIdentity({
         reason: "Access your profile",
         title: "Biometric Authentication",
         subtitle: "Please authenticate to view your profile",
       });
-
-      if (result.verified) {
-        setIsAuthenticated(true);
-        toast.success("Authentication successful!");
-      } else {
-        toast.error("Authentication failed. Please try again.");
-      }
+      
+      // If the verification passes, the above call doesn't throw an error
+      // So we can assume authentication is successful
+      setIsAuthenticated(true);
+      toast.success("Authentication successful!");
     } catch (error) {
       console.error('Error during biometric auth:', error);
       toast.error("Authentication failed. Please try again.");
@@ -141,3 +139,4 @@ const ProtectedProfilePage: React.FC = () => {
 };
 
 export default ProtectedProfilePage;
+
