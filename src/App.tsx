@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useIsMobile } from './hooks/use-mobile';
 import { supabase } from './integrations/supabase/client';
 import { AuthProvider } from './contexts/AuthContext';
 import { FitnessProvider } from './contexts/FitnessContext';
 import { ShakeDetectionProvider } from './contexts/ShakeDetectionContext';
 import { RecipeProvider } from './contexts/RecipeContext';
+import { Toaster } from 'sonner';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -20,6 +21,7 @@ import CameraPage from './pages/CameraPage';
 import QrScannerPage from './pages/QrScannerPage';
 import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
+import ProtectedProfilePage from './components/ProtectedProfilePage';
 
 const App = () => {
   const [user, setUser] = useState<any>(null);
@@ -58,6 +60,7 @@ const App = () => {
           <ShakeDetectionProvider>
             <RecipeProvider>
               <div className="app-container">
+                <Toaster position="top-center" closeButton richColors />
                 <Routes>
                   <Route path="/" element={user ? <HomePage /> : <LoginPage />} />
                   <Route path="/login" element={<LoginPage />} />
@@ -69,7 +72,7 @@ const App = () => {
                   <Route path="/recipe/:id" element={<RecipeDetailPage />} />
                   <Route path="/videos" element={<RecipeVideosPage />} />
                   <Route path="/calories" element={<CalorieTrackingPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/profile" element={<ProtectedProfilePage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>

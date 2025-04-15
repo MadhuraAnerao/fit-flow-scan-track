@@ -21,7 +21,7 @@ const ShakeDetectionContext = createContext<ShakeDetectionContextType | undefine
 export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isShakeEnabled, setIsShakeEnabled] = useState(true);
   const [isTiltEnabled, setIsTiltEnabled] = useState(true);
-  const [shakeThreshold, setShakeThreshold] = useState(15); // Increased threshold for better detection
+  const [shakeThreshold, setShakeThreshold] = useState(15);
   const [lastShakeAction, setLastShakeAction] = useState<Date | null>(null);
   const [stepCount, setStepCount] = useState(0);
   const [lastTiltTime, setLastTiltTime] = useState(0);
@@ -276,6 +276,7 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       ];
       
       const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+      
       toast.info(randomMessage, {
         description: "Shake detected! Stay motivated!",
         duration: 5000
@@ -285,7 +286,7 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       setLastShakeAction(new Date());
       
       // Navigate to a random page
-      const randomPages = ['/home', '/recipes', '/calories', '/profile', '/recipe-videos'];
+      const randomPages = ['/home', '/recipes', '/calories', '/profile', '/videos'];
       const randomIndex = Math.floor(Math.random() * randomPages.length);
       navigate(randomPages[randomIndex]);
       
