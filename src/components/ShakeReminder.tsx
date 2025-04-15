@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useShakeDetection } from '@/contexts/ShakeDetectionContext';
-import { RotateCcw, PhoneShake } from 'lucide-react';
+import { RotateCcw, Smartphone } from 'lucide-react';
 
 export const ShakeReminder: React.FC = () => {
   const [showShakeDialog, setShowShakeDialog] = useState(false);
@@ -75,7 +75,7 @@ export const ShakeReminder: React.FC = () => {
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <PhoneShake className="text-primary" />
+              <Smartphone className="text-primary" />
               {dialogContent.title}
             </AlertDialogTitle>
             <AlertDialogDescription>
