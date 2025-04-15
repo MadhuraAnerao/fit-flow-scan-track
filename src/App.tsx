@@ -24,6 +24,9 @@ import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
 import ProtectedProfilePage from './components/ProtectedProfilePage';
 
+// Import NavigationContainer for React Navigation compatibility
+import { NavigationContainer } from '@react-navigation/native';
+
 const App = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -55,34 +58,36 @@ const App = () => {
   }
 
   return (
-    <Router>
-      <AuthProvider>
-        <FitnessProvider>
-          <ShakeDetectionProvider>
-            <RecipeProvider>
-              <div className="app-container">
-                <Toaster position="top-center" closeButton richColors />
-                <ShakeReminder />
-                <Routes>
-                  <Route path="/" element={user ? <HomePage /> : <LoginPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/onboarding" element={<OnboardingPage />} />
-                  <Route path="/home" element={<HomePage />} />
-                  <Route path="/qr-scanner" element={<QrScannerPage />} />
-                  <Route path="/camera" element={<CameraPage />} />
-                  <Route path="/recipes" element={<RecipesPage />} />
-                  <Route path="/recipe/:id" element={<RecipeDetailPage />} />
-                  <Route path="/videos" element={<RecipeVideosPage />} />
-                  <Route path="/calories" element={<CalorieTrackingPage />} />
-                  <Route path="/profile" element={<ProtectedProfilePage />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </RecipeProvider>
-          </ShakeDetectionProvider>
-        </FitnessProvider>
-      </AuthProvider>
-    </Router>
+    <NavigationContainer>
+      <Router>
+        <AuthProvider>
+          <FitnessProvider>
+            <ShakeDetectionProvider>
+              <RecipeProvider>
+                <div className="app-container">
+                  <Toaster position="top-center" closeButton richColors />
+                  <ShakeReminder />
+                  <Routes>
+                    <Route path="/" element={user ? <HomePage /> : <LoginPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/onboarding" element={<OnboardingPage />} />
+                    <Route path="/home" element={<HomePage />} />
+                    <Route path="/qr-scanner" element={<QrScannerPage />} />
+                    <Route path="/camera" element={<CameraPage />} />
+                    <Route path="/recipes" element={<RecipesPage />} />
+                    <Route path="/recipe/:id" element={<RecipeDetailPage />} />
+                    <Route path="/videos" element={<RecipeVideosPage />} />
+                    <Route path="/calories" element={<CalorieTrackingPage />} />
+                    <Route path="/profile" element={<ProtectedProfilePage />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </div>
+              </RecipeProvider>
+            </ShakeDetectionProvider>
+          </FitnessProvider>
+        </AuthProvider>
+      </Router>
+    </NavigationContainer>
   );
 };
 
