@@ -1,16 +1,13 @@
 
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useIsMobile } from './hooks/use-mobile';
 import { supabase } from './integrations/supabase/client';
 import { AuthProvider } from './contexts/AuthContext';
 import { FitnessProvider } from './contexts/FitnessContext';
 import { ShakeDetectionProvider } from './contexts/ShakeDetectionContext';
 import { RecipeProvider } from './contexts/RecipeContext';
-import { Toaster } from 'sonner';
-import ShakeReminder from './components/ShakeReminder';
-
-// Pages
+import { Layout } from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import HomePage from './pages/HomePage';
@@ -22,10 +19,6 @@ import CameraPage from './pages/CameraPage';
 import QrScannerPage from './pages/QrScannerPage';
 import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
-import ProtectedProfilePage from './components/ProtectedProfilePage';
-
-// Import NavigationContainer for React Navigation compatibility
-import { NavigationContainer } from '@react-navigation/native';
 
 const App = () => {
   const [user, setUser] = useState<any>(null);
@@ -49,45 +42,56 @@ const App = () => {
     return () => subscription?.unsubscribe();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
   return (
-    <NavigationContainer>
-      <Router>
-        <AuthProvider>
-          <FitnessProvider>
-            <ShakeDetectionProvider>
-              <RecipeProvider>
-                <div className="app-container">
-                  <Toaster position="top-center" closeButton richColors />
-                  <ShakeReminder />
-                  <Routes>
-                    <Route path="/" element={user ? <HomePage /> : <LoginPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/onboarding" element={<OnboardingPage />} />
-                    <Route path="/home" element={<HomePage />} />
-                    <Route path="/qr-scanner" element={<QrScannerPage />} />
-                    <Route path="/camera" element={<CameraPage />} />
-                    <Route path="/recipes" element={<RecipesPage />} />
-                    <Route path="/recipe/:id" element={<RecipeDetailPage />} />
-                    <Route path="/videos" element={<RecipeVideosPage />} />
-                    <Route path="/calories" element={<CalorieTrackingPage />} />
-                    <Route path="/profile" element={<ProtectedProfilePage />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
+    <Router>
+      <AuthProvider>
+        <FitnessProvider>
+          <ShakeDetectionProvider>
+            <RecipeProvider>
+              {loading ? (
+                <div className="flex items-center justify-center h-screen">
+                  <div className="text-center">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                    <p className="mt-2 text-sm text-gray-500">Loading...</p>
+                  </div>
                 </div>
-              </RecipeProvider>
-            </ShakeDetectionProvider>
-          </FitnessProvider>
-        </AuthProvider>
-      </Router>
-    </NavigationContainer>
+              ) : (
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+
+                  <Route
+                    path="/onboarding"
+                    element={
+                      user ? <OnboardingPage /> : <Navigate to="/login" />
+                    }
+                  />
+
+                  <Route
+                    path="/"
+                    element={
+                      user ? <Layout><Outlet /></Layout> : <Navigate to="/login" />
+                    }
+                  >
+                    <Route index element={<HomePage />} />
+                    <Route path="home" element={<HomePage />} />
+                    <Route path="profile" element={<ProfilePage />} />
+                    <Route path="tracking" element={<CalorieTrackingPage />} />
+                    <Route path="calories" element={<CalorieTrackingPage />} />
+                    <Route path="recipe-videos" element={<RecipeVideosPage />} />
+                    <Route path="camera" element={<CameraPage />} />
+                    <Route path="qr-scanner" element={<QrScannerPage />} />
+                    <Route path="recipes" element={<RecipesPage />} />
+                    <Route path="recipes/:id" element={<RecipeDetailPage />} />
+                  </Route>
+
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              )}
+            </RecipeProvider>
+          </ShakeDetectionProvider>
+        </FitnessProvider>
+      </AuthProvider>
+    </Router>
   );
 };
 

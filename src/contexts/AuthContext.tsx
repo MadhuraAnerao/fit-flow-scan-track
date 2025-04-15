@@ -1,10 +1,10 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Device } from '@capacitor/device';
 import { toast } from 'sonner';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigation } from '@react-navigation/native';
 
 type UserHealthInfo = {
   height?: number;
@@ -40,11 +40,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigation = useNavigation();
+  const navigate = useNavigate();
 
-  // Helper function to map Supabase user to our AppUser model
+  // Map Supabase user and profile data to our AppUser type
   const mapUserToAppUser = async (authUser: User): Promise<AppUser | null> => {
     try {
+      // Fetch the user profile from the profiles table
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -82,12 +83,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         console.log('Auth state changed:', event);
         setSession(newSession);
         
         if (newSession?.user) {
+          // Don't call other Supabase functions directly in the callback
+          // Use setTimeout to defer
           setTimeout(() => {
             mapUserToAppUser(newSession.user)
               .then(appUser => {
@@ -105,6 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       if (currentSession?.user) {
@@ -151,11 +156,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         toast.success('Account created successfully! Please verify your email.');
         
+        // Wait a moment for profile to be created via trigger
         setTimeout(async () => {
           const appUser = await mapUserToAppUser(data.user!);
           if (appUser) {
             setUser(appUser);
-            navigation.navigate('Onboarding' as never);
+            // Navigate to onboarding
+            navigate('/onboarding');
           }
         }, 1000);
       }
@@ -183,20 +190,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (appUser) {
           setUser(appUser);
           
-          // Store email for biometric login
-          localStorage.setItem('lastLoginEmail', email);
-          
-          // Store password for biometric auth simulation
-          // In a real app, this would be stored in secure keychain/keystore
-          localStorage.setItem(`biometric_auth_${email}`, password);
-          
           toast.success('Logged in successfully!');
           
           // Navigate to home or onboarding depending on whether health info exists
           if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
-            navigation.navigate('MainTabs' as never);
+            navigate('/home');
           } else {
-            navigation.navigate('Onboarding' as never);
+            navigate('/onboarding');
           }
         }
       }
@@ -216,7 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(null);
       setSession(null);
-      navigation.navigate('Login' as never);
+      navigate('/');
       toast.success('Logged out successfully!');
     } catch (error) {
       toast.error('Logout failed: ' + (error as Error).message);
@@ -227,6 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (!user) throw new Error('No user is logged in');
       
+      // Update the profiles table directly
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -241,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
+      // Update local user state
       setUser(prev => {
         if (!prev) return null;
         
@@ -262,9 +264,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkBiometricAvailability = async () => {
     try {
-      const biometricInfo = await Device.getInfo();
-      
-      return biometricInfo.platform === 'ios' || biometricInfo.platform === 'android';
+      // Updated to handle the current Capacitor Device API
+      const deviceInfo = await Device.getInfo();
+      // Note: We're simplifying this for demo purposes
+      // In a real app, we would use a proper biometric plugin
+      return deviceInfo.platform !== 'web'; // Assume biometrics available on mobile platforms
     } catch (error) {
       console.error('Error checking biometrics:', error);
       return false;
@@ -273,62 +277,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const authenticateWithBiometrics = async () => {
     try {
-      const lastEmail = localStorage.getItem('lastLoginEmail');
-      
-      if (!lastEmail) {
-        toast.error('You need to login with email first before using biometrics');
-        return false;
-      }
-      
-      const { data, error } = await supabase.auth.getSession();
+      // In a real app, we'd use a proper biometric authentication plugin
+      // For this demo, we'll check if we have a stored session
+      const { data } = await supabase.auth.getSession();
       
       if (data.session) {
         toast.success('Biometric authentication successful!');
-        navigation.navigate('MainTabs' as never);
+        navigate('/home');
         return true;
       }
       
-      try {
-        const storedPassword = localStorage.getItem(`biometric_auth_${lastEmail}`);
-        
-        if (!storedPassword) {
-          toast.error('No stored credentials found. Please login with email first.');
-          return false;
-        }
-        
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: lastEmail,
-          password: storedPassword,
-        });
-        
-        if (error) {
-          toast.error('Authentication failed: ' + error.message);
-          return false;
-        }
-        
-        if (data.user) {
-          const appUser = await mapUserToAppUser(data.user);
-          if (appUser) {
-            setUser(appUser);
-            
-            toast.success('Biometric authentication successful!');
-            
-            if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
-              navigation.navigate('MainTabs' as never);
-            } else {
-              navigation.navigate('Onboarding' as never);
-            }
-            
-            return true;
-          }
-        }
-        
-        return false;
-      } catch (error) {
-        toast.error('Authentication failed');
-        console.error('Biometric auth error:', error);
-        return false;
-      }
+      return false;
     } catch (error) {
       console.error('Biometric authentication failed:', error);
       return false;

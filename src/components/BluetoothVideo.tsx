@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+// Add TypeScript interfaces for Web Bluetooth API
 declare global {
   interface Navigator {
     bluetooth?: {
@@ -30,7 +32,9 @@ declare global {
   interface BluetoothDevice {
     name: string | null;
     id?: string;
-    gatt?: BluetoothRemoteGATTServer;
+    gatt?: {
+      connect(): Promise<BluetoothRemoteGATTServer>;
+    };
     addEventListener(
       type: 'gattserverdisconnected', 
       listener: EventListener
@@ -91,10 +95,12 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
   const [newDeviceName, setNewDeviceName] = useState<string>('');
   const [isAddingDevice, setIsAddingDevice] = useState<boolean>(false);
 
+  // Check if Bluetooth is available in the browser
   useEffect(() => {
     const checkBluetoothAvailability = async () => {
       if (navigator.bluetooth) {
         try {
+          // Check if Bluetooth is available on this device
           const isAvailable = await navigator.bluetooth.getAvailability();
           setIsBluetoothAvailable(isAvailable);
           
@@ -116,10 +122,12 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     checkBluetoothAvailability();
   }, []);
 
+  // Save known devices to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('knownBluetoothDevices', JSON.stringify(knownDevices));
   }, [knownDevices]);
 
+  // Setup video element event listeners
   useEffect(() => {
     const video = videoRef.current;
     
@@ -142,11 +150,13 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
         setIsVideoPlaying(false);
       };
       
+      // Add event listeners
       video.addEventListener('timeupdate', handleTimeUpdate);
       video.addEventListener('ended', handleEnded);
       video.addEventListener('play', handlePlay);
       video.addEventListener('pause', handlePause);
       
+      // Clean up
       return () => {
         video.removeEventListener('timeupdate', handleTimeUpdate);
         video.removeEventListener('ended', handleEnded);
@@ -156,6 +166,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     }
   }, []);
 
+  // Disconnect device when component unmounts
   useEffect(() => {
     return () => {
       if (currentBluetoothDevice?.gatt?.connected) {
@@ -185,6 +196,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     toast.info(`Removed ${removedDevice.name} from known devices`);
   };
 
+  // Scan for available Bluetooth devices
   const scanForDevices = async () => {
     if (!navigator.bluetooth) {
       toast.error("Bluetooth not available on this device or browser");
@@ -195,17 +207,25 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
       setIsScanning(true);
       toast.info("Scanning for Bluetooth audio devices...");
 
+      // Request a Bluetooth device that supports audio output
       const device = await navigator.bluetooth.requestDevice({
+        // Accept all devices if we're just scanning
         acceptAllDevices: true,
+        // Optionally filter for audio devices
+        // filters: [
+        //   { services: ['0000110b-0000-1000-8000-00805f9b34fb'] } // A2DP Source service
+        // ],
+        // Include audio services
         optionalServices: [
-          '0000110b-0000-1000-8000-00805f9b34fb',
-          '0000110c-0000-1000-8000-00805f9b34fb',
-          '0000110e-0000-1000-8000-00805f9b34fb',
-          '0000111e-0000-1000-8000-00805f9b34fb'
+          '0000110b-0000-1000-8000-00805f9b34fb', // A2DP Source
+          '0000110c-0000-1000-8000-00805f9b34fb', // A2DP Sink
+          '0000110e-0000-1000-8000-00805f9b34fb', // AVRCP Target
+          '0000111e-0000-1000-8000-00805f9b34fb'  // Handsfree
         ]
       });
 
       if (device) {
+        // Add to known devices if not already there
         const deviceExists = knownDevices.some(d => 
           (d.id && d.id === device.id) || (d.name && d.name === device.name)
         );
@@ -218,6 +238,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
           toast.success(`Added ${device.name} to your devices`);
         }
         
+        // Try to connect to this device
         await connectToBluetoothDevice(device);
       }
     } catch (error) {
@@ -228,6 +249,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     }
   };
 
+  // Connect to a Bluetooth device by name
   const connectToDevice = async (deviceName: string) => {
     if (!navigator.bluetooth) {
       toast.error("Bluetooth not available on this device or browser");
@@ -238,13 +260,15 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
       setIsConnecting(true);
       toast.info(`Searching for ${deviceName}...`);
 
+      // Request a Bluetooth device with the specific name
       const device = await navigator.bluetooth.requestDevice({
         filters: [{ name: deviceName }],
+        // Include audio services
         optionalServices: [
-          '0000110b-0000-1000-8000-00805f9b34fb',
-          '0000110c-0000-1000-8000-00805f9b34fb',
-          '0000110e-0000-1000-8000-00805f9b34fb',
-          '0000111e-0000-1000-8000-00805f9b34fb'
+          '0000110b-0000-1000-8000-00805f9b34fb', // A2DP Source
+          '0000110c-0000-1000-8000-00805f9b34fb', // A2DP Sink
+          '0000110e-0000-1000-8000-00805f9b34fb', // AVRCP Target
+          '0000111e-0000-1000-8000-00805f9b34fb'  // Handsfree
         ]
       });
 
@@ -259,11 +283,13 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     }
   };
 
+  // Connect to a Bluetooth device object
   const connectToBluetoothDevice = async (device: BluetoothDevice) => {
     try {
       setIsConnecting(true);
       toast.info(`Connecting to ${device.name || 'device'}...`);
 
+      // Set up disconnect listener
       device.addEventListener('gattserverdisconnected', () => {
         setIsConnected(false);
         setConnectedDevice(null);
@@ -276,13 +302,16 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
         }
       });
 
+      // Try to connect to GATT server
       if (device.gatt) {
         const server = await device.gatt.connect();
         if (server.connected) {
+          // If connection is successful
           setCurrentBluetoothDevice(device);
           setConnectedDevice(device.name || 'Unknown Device');
           setIsConnected(true);
           
+          // If device has an ID and isn't already in known devices with that ID, update it
           if (device.id) {
             const existingDeviceIndex = knownDevices.findIndex(d => 
               (d.name === device.name) || (d.id && d.id === device.id)
@@ -311,6 +340,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     }
   };
 
+  // Disconnect from Bluetooth device
   const disconnectBluetooth = () => {
     if (currentBluetoothDevice?.gatt) {
       try {
@@ -331,13 +361,16 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     toast.info("Disconnected from Bluetooth device");
   };
 
+  // Toggle video playback
   const toggleVideo = () => {
     if (!isConnected && videoRef.current) {
+      // Allow playback even without Bluetooth for testing purposes
       toast.info("Playing without Bluetooth connection");
       togglePlay();
       return;
     }
     
+    // With Bluetooth connected
     togglePlay();
   };
 
@@ -362,6 +395,7 @@ export const BluetoothVideo: React.FC<BluetoothVideoProps> = ({
     }
   };
 
+  // Toggle mute/unmute
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
