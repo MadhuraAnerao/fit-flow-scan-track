@@ -8,6 +8,7 @@ import { FitnessProvider } from './contexts/FitnessContext';
 import { ShakeDetectionProvider } from './contexts/ShakeDetectionContext';
 import { RecipeProvider } from './contexts/RecipeContext';
 import { Toaster } from 'sonner';
+import ShakeReminder from './components/ShakeReminder';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -61,6 +62,7 @@ const App = () => {
             <RecipeProvider>
               <div className="app-container">
                 <Toaster position="top-center" closeButton richColors />
+                <ShakeReminder />
                 <Routes>
                   <Route path="/" element={user ? <HomePage /> : <LoginPage />} />
                   <Route path="/login" element={<LoginPage />} />

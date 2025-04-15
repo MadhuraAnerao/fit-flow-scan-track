@@ -18,6 +18,12 @@ type ShakeDetectionContextType = {
 
 const ShakeDetectionContext = createContext<ShakeDetectionContextType | undefined>(undefined);
 
+// Custom event emitter helper
+const emitEvent = (eventName: string, detail: any) => {
+  const event = new CustomEvent(eventName, { detail });
+  window.dispatchEvent(event);
+};
+
 export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isShakeEnabled, setIsShakeEnabled] = useState(true);
   const [isTiltEnabled, setIsTiltEnabled] = useState(true);
@@ -277,6 +283,9 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       
       const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
       
+      // Emit custom event for ShakeReminder component
+      emitEvent('shakeDetected', { message: randomMessage });
+      
       toast.info(randomMessage, {
         description: "Shake detected! Stay motivated!",
         duration: 5000
@@ -316,6 +325,10 @@ export const ShakeDetectionProvider: React.FC<{ children: React.ReactNode }> = (
       ];
       
       const randomQuote = healthQuotes[Math.floor(Math.random() * healthQuotes.length)];
+      
+      // Emit custom event for ShakeReminder component
+      emitEvent('tiltDetected', { message: randomQuote });
+      
       toast.info(randomQuote, {
         description: "Health reminder (tilt detected)",
         duration: 4000

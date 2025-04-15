@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Device } from '@capacitor/device';
 import { toast } from 'sonner';
@@ -8,7 +7,7 @@ import ProfilePage from '../pages/ProfilePage';
 import { useIsMobile } from '../hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Fingerprint, UserCircle2 } from 'lucide-react';
+import { Fingerprint, UserCircle2, ShieldAlert } from 'lucide-react';
 
 const ProtectedProfilePage: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -88,13 +87,19 @@ const ProtectedProfilePage: React.FC = () => {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-xl flex items-center justify-center gap-2">
-              <Fingerprint size={24} />
-              Biometric Authentication
+              <ShieldAlert size={24} className="text-amber-500" />
+              Authentication Required
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
-            <p className="text-gray-600">
-              Please authenticate to access your profile
+            <div className="mx-auto flex justify-center mb-6">
+              <Fingerprint size={64} className="text-fitness-primary" />
+            </div>
+            <p className="text-gray-600 font-medium text-lg">
+              Use your fingerprint to access your profile
+            </p>
+            <p className="text-gray-500 text-sm">
+              Please authenticate to continue to your profile section
             </p>
             <div className="flex flex-col gap-2 items-center">
               {isBiometricAvailable ? (
