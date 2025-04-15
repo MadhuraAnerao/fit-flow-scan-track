@@ -139,4 +139,3 @@ const ProtectedProfilePage: React.FC = () => {
 };
 
 export default ProtectedProfilePage;
-
