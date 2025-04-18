@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Icon } from 'leaflet';
+import { Icon, LatLngTuple } from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
@@ -105,8 +105,9 @@ const GpsTracker = () => {
         {currentPosition && (
           <div className="h-[300px] mb-4 rounded-lg overflow-hidden">
             <MapContainer
-              center={[currentPosition.lat, currentPosition.lng] as [number, number]}
+              center={[currentPosition.lat, currentPosition.lng] as LatLngTuple}
               zoom={15}
+              scrollWheelZoom={false}
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
@@ -114,12 +115,12 @@ const GpsTracker = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
               <Marker 
-                position={[currentPosition.lat, currentPosition.lng] as [number, number]} 
-                icon={customIcon} 
+                position={[currentPosition.lat, currentPosition.lng] as LatLngTuple}
+                icon={customIcon}
               />
               {routePath.length > 1 && (
                 <Polyline 
-                  positions={routePath.map(pos => [pos.lat, pos.lng] as [number, number])} 
+                  positions={routePath.map(pos => [pos.lat, pos.lng] as LatLngTuple)}
                   pathOptions={{ color: 'red' }}
                 />
               )}
