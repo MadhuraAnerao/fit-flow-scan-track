@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +11,8 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import GpsTracker from '../components/GpsTracker';
+import HealthReminder from '../components/HealthReminder';
 
 const motivationalQuotes = [
   "The only bad workout is the one that didn't happen.",
@@ -141,6 +142,13 @@ const HomePage = () => {
             <span className="text-xs mt-1">Videos</span>
           </Link>
         </div>
+      </section>
+      
+      <section className="px-4 py-2">
+        <div className="flex justify-end mb-4">
+          <HealthReminder />
+        </div>
+        <GpsTracker />
       </section>
       
       <section className="px-4 py-2">
