@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFitness } from '../contexts/FitnessContext';
-import { useShakeDetection } from '../contexts/ShakeDetectionContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -27,7 +26,6 @@ const motivationalQuotes = [
 
 const HomePage = () => {
   const { user } = useAuth();
-  const { isShakeEnabled, toggleShakeDetection, isTiltEnabled, toggleTiltDetection } = useShakeDetection();
   const { 
     getTotalCaloriesForDay, 
     getTotalCaloriesBurnedForDay, 
@@ -85,24 +83,6 @@ const HomePage = () => {
             <h1 className="text-3xl font-bold">
               {loading ? 'Loading...' : `Hi, ${user?.name?.split(' ')[0] || 'there'}!`}
             </h1>
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="bg-white/20 hover:bg-white/30"
-                onClick={toggleShakeDetection}
-              >
-                {isShakeEnabled ? 'Shake: ON' : 'Shake: OFF'}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="bg-white/20 hover:bg-white/30"
-                onClick={toggleTiltDetection}
-              >
-                {isTiltEnabled ? 'Tilt: ON' : 'Tilt: OFF'}
-              </Button>
-            </div>
           </div>
           <p className="mt-2 opacity-90">
             {format(new Date(), 'EEEE, MMMM d, yyyy')}
@@ -265,7 +245,7 @@ const HomePage = () => {
       
       <section className="px-4 py-4 mb-16">
         <p className="text-center text-xs text-gray-500">
-          FitFlow v1.0 • Shake or tilt your device for surprise navigation and health reminders!
+          FitFlow v1.0
         </p>
       </section>
     </div>

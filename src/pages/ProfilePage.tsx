@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFitness } from '../contexts/FitnessContext';
-import { useShakeDetection } from '../contexts/ShakeDetectionContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,6 @@ import {
 const ProfilePage: React.FC = () => {
   const { user, logout, updateUserHealthInfo } = useAuth();
   const { notes, addNote, deleteNote, isLoading: notesLoading } = useFitness();
-  const { isShakeEnabled, toggleShakeDetection, shakeThreshold, setShakeThreshold } = useShakeDetection();
   
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
@@ -367,38 +365,6 @@ const ProfilePage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <label className="text-sm font-medium">Shake Detection</label>
-                  <p className="text-xs text-gray-500">
-                    Shake your phone to navigate to random pages
-                  </p>
-                </div>
-                <Switch
-                  checked={isShakeEnabled}
-                  onCheckedChange={toggleShakeDetection}
-                />
-              </div>
-              
-              {isShakeEnabled && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Shake Sensitivity: {shakeThreshold}
-                  </label>
-                  <Slider
-                    value={[shakeThreshold]}
-                    onValueChange={(value) => setShakeThreshold(value[0])}
-                    min={5}
-                    max={25}
-                    step={1}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Sensitive</span>
-                    <span>Less Sensitive</span>
-                  </div>
-                </div>
-              )}
-              
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <label className="text-sm font-medium">Notifications</label>
