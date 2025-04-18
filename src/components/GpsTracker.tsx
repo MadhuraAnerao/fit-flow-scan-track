@@ -105,7 +105,7 @@ const GpsTracker = () => {
         {currentPosition && (
           <div className="h-[300px] mb-4 rounded-lg overflow-hidden">
             <MapContainer
-              center={[currentPosition.lat, currentPosition.lng]}
+              center={[currentPosition.lat, currentPosition.lng] as [number, number]}
               zoom={15}
               style={{ height: '100%', width: '100%' }}
             >
@@ -113,9 +113,15 @@ const GpsTracker = () => {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
-              <Marker position={[currentPosition.lat, currentPosition.lng]} icon={customIcon} />
+              <Marker 
+                position={[currentPosition.lat, currentPosition.lng] as [number, number]} 
+                icon={customIcon} 
+              />
               {routePath.length > 1 && (
-                <Polyline positions={routePath.map(pos => [pos.lat, pos.lng])} color="red" />
+                <Polyline 
+                  positions={routePath.map(pos => [pos.lat, pos.lng] as [number, number])} 
+                  pathOptions={{ color: 'red' }}
+                />
               )}
             </MapContainer>
           </div>
