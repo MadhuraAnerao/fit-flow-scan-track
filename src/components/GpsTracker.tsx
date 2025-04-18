@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Icon, LatLngTuple } from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -19,6 +19,15 @@ interface Position {
   lat: number;
   lng: number;
 }
+
+// Helper component to handle center property
+const MapView = ({ center }: { center: LatLngTuple }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center);
+  }, [center, map]);
+  return null;
+};
 
 const GpsTracker = () => {
   const [tracking, setTracking] = useState(false);
@@ -105,14 +114,13 @@ const GpsTracker = () => {
         {currentPosition && (
           <div className="h-[300px] mb-4 rounded-lg overflow-hidden">
             <MapContainer
-              center={[currentPosition.lat, currentPosition.lng] as LatLngTuple}
               zoom={15}
               scrollWheelZoom={false}
               style={{ height: '100%', width: '100%' }}
             >
+              <MapView center={[currentPosition.lat, currentPosition.lng] as LatLngTuple} />
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
               <Marker 
                 position={[currentPosition.lat, currentPosition.lng] as LatLngTuple}
