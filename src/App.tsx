@@ -16,6 +16,7 @@ import CameraPage from './pages/CameraPage';
 import QrScannerPage from './pages/QrScannerPage';
 import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
+import { Toaster } from 'sonner';
 
 const App = () => {
   const [user, setUser] = useState<any>(null);
@@ -43,6 +44,7 @@ const App = () => {
       <AuthProvider>
         <FitnessProvider>
           <RecipeProvider>
+            <Toaster position="top-center" richColors />
             {loading ? (
               <div className="flex items-center justify-center h-screen">
                 <div className="text-center">
@@ -52,22 +54,28 @@ const App = () => {
               </div>
             ) : (
               <Routes>
+                <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<LoginPage />} />
 
                 <Route
                   path="/onboarding"
                   element={
-                    user ? <OnboardingPage /> : <Navigate to="/login" />
+                    <PrivateRoute>
+                      <OnboardingPage />
+                    </PrivateRoute>
                   }
                 />
 
                 <Route
                   path="/"
                   element={
-                    user ? <Layout><Outlet /></Layout> : <Navigate to="/login" />
+                    <PrivateRoute>
+                      <Layout>
+                        <Outlet />
+                      </Layout>
+                    </PrivateRoute>
                   }
                 >
-                  <Route index element={<HomePage />} />
                   <Route path="home" element={<HomePage />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="tracking" element={<CalorieTrackingPage />} />
@@ -86,6 +94,44 @@ const App = () => {
       </AuthProvider>
     </Router>
   );
+};
+
+// Private route component to handle authentication
+const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+          <p className="mt-2 text-sm text-gray-500">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 export default App;

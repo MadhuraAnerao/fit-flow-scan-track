@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Lock, User as UserIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../integrations/supabase/client';
 
 const LoginPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,11 +15,23 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, register, user } = useAuth();
+  const { user, login, register } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If user is already logged in, redirect to home
+    // Check if user is already logged in
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate('/home');
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
+
+  // Also check when user state changes
+  useEffect(() => {
     if (user) {
       navigate('/home');
     }
@@ -52,12 +65,21 @@ const LoginPage = () => {
       setIsSubmitting(true);
       
       if (isLogin) {
-        await login(email, password);
+        const result = await login(email, password);
+        if (result) {
+          toast.success('Logged in successfully!');
+          navigate('/home');
+        }
       } else {
-        await register(email, password, name);
+        const result = await register(email, password, name);
+        if (result) {
+          toast.success('Account created successfully!');
+          navigate('/onboarding');
+        }
       }
     } catch (error) {
       console.error('Auth error:', error);
+      toast.error(`Authentication failed: ${(error as Error).message}`);
     } finally {
       setIsSubmitting(false);
     }

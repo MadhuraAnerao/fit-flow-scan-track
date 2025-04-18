@@ -26,12 +26,10 @@ type AppUser = {
 type AuthContextType = {
   user: AppUser | null;
   isLoading: boolean;
-  register: (email: string, password: string, name: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUserHealthInfo: (healthInfo: Partial<UserHealthInfo>) => Promise<void>;
-  checkBiometricAvailability: () => Promise<boolean>;
-  authenticateWithBiometrics: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,11 +52,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Error fetching user profile:', error);
-        throw error;
-      }
-
-      if (!profile) {
-        console.error('No profile found for user:', authUser.id);
         return null;
       }
 
@@ -137,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (email: string, password: string, name: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       
@@ -154,27 +147,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       if (data.user) {
-        toast.success('Account created successfully! Please verify your email.');
+        toast.success('Account created successfully!');
         
         // Wait a moment for profile to be created via trigger
-        setTimeout(async () => {
-          const appUser = await mapUserToAppUser(data.user!);
-          if (appUser) {
-            setUser(appUser);
-            // Navigate to onboarding
-            navigate('/onboarding');
-          }
-        }, 1000);
+        return new Promise((resolve) => {
+          setTimeout(async () => {
+            const appUser = await mapUserToAppUser(data.user!);
+            if (appUser) {
+              setUser(appUser);
+              resolve(true);
+            } else {
+              resolve(false);
+            }
+          }, 1000);
+        });
       }
+      
+      return false;
     } catch (error) {
       toast.error('Registration failed: ' + (error as Error).message);
-      throw error;
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       
@@ -189,20 +187,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const appUser = await mapUserToAppUser(data.user);
         if (appUser) {
           setUser(appUser);
-          
           toast.success('Logged in successfully!');
-          
-          // Navigate to home or onboarding depending on whether health info exists
-          if (appUser.healthInfo?.height && appUser.healthInfo?.weight) {
-            navigate('/home');
-          } else {
-            navigate('/onboarding');
-          }
+          return true;
         }
       }
+      
+      return false;
     } catch (error) {
       toast.error('Login failed: ' + (error as Error).message);
-      throw error;
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(null);
       setSession(null);
-      navigate('/');
+      navigate('/login');
       toast.success('Logged out successfully!');
     } catch (error) {
       toast.error('Logout failed: ' + (error as Error).message);
@@ -262,38 +255,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const checkBiometricAvailability = async () => {
-    try {
-      // Updated to handle the current Capacitor Device API
-      const deviceInfo = await Device.getInfo();
-      // Note: We're simplifying this for demo purposes
-      // In a real app, we would use a proper biometric plugin
-      return deviceInfo.platform !== 'web'; // Assume biometrics available on mobile platforms
-    } catch (error) {
-      console.error('Error checking biometrics:', error);
-      return false;
-    }
-  };
-
-  const authenticateWithBiometrics = async () => {
-    try {
-      // In a real app, we'd use a proper biometric authentication plugin
-      // For this demo, we'll check if we have a stored session
-      const { data } = await supabase.auth.getSession();
-      
-      if (data.session) {
-        toast.success('Biometric authentication successful!');
-        navigate('/home');
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Biometric authentication failed:', error);
-      return false;
-    }
-  };
-
   const value = {
     user,
     isLoading,
@@ -301,8 +262,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     updateUserHealthInfo,
-    checkBiometricAvailability,
-    authenticateWithBiometrics
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
