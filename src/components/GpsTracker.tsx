@@ -1,12 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Icon } from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
-import { Navigation2, MapPin } from 'lucide-react';
+import { Navigation2, MapPin, AlertTriangle } from 'lucide-react';
 
 // Fix the marker icon issue
 const customIcon = new Icon({
@@ -20,20 +19,54 @@ interface Position {
   lng: number;
 }
 
+// Helper component to update map center when position changes
+const SetViewOnPositionChange = ({ position }: { position: Position }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    map.setView([position.lat, position.lng], 15);
+  }, [map, position]);
+  
+  return null;
+};
+
 const GpsTracker = () => {
   const [tracking, setTracking] = useState(false);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [routePath, setRoutePath] = useState<Position[]>([]);
   const [distance, setDistance] = useState(0);
   const [calories, setCalories] = useState(0);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  
+  // Keep track of geolocation watch ID
+  const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let watchId: number;
+    // Clean up function to stop tracking when component unmounts
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tracking) {
+      // Stop watching position when tracking is turned off
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      return;
+    }
 
     const startTracking = () => {
       if ("geolocation" in navigator) {
         toast.loading("Accessing your location...");
-        watchId = navigator.geolocation.watchPosition(
+        setLocationError(null);
+        
+        watchIdRef.current = navigator.geolocation.watchPosition(
           (position) => {
             toast.success("Location accessed successfully!");
             const newPosition = {
@@ -55,29 +88,41 @@ const GpsTracker = () => {
             });
           },
           (error) => {
-            toast.error("Error accessing location: " + error.message);
+            let errorMessage = "Error accessing location";
+            
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = "Location permission denied. Please enable location access in your browser settings.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = "Location information is unavailable.";
+                break;
+              case error.TIMEOUT:
+                errorMessage = "Location request timed out.";
+                break;
+              default:
+                errorMessage = `Location error: ${error.message}`;
+            }
+            
+            toast.error(errorMessage);
+            setLocationError(errorMessage);
             setTracking(false);
           },
           {
             enableHighAccuracy: true,
-            timeout: 5000,
+            timeout: 10000,
             maximumAge: 0
           }
         );
       } else {
-        toast.error("Geolocation is not supported by your browser");
+        const errorMsg = "Geolocation is not supported by your browser";
+        toast.error(errorMsg);
+        setLocationError(errorMsg);
+        setTracking(false);
       }
     };
 
-    if (tracking) {
-      startTracking();
-    }
-
-    return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
+    startTracking();
   }, [tracking]);
 
   const calculateDistance = (pos1: Position, pos2: Position) => {
@@ -102,17 +147,24 @@ const GpsTracker = () => {
           if (result.state === 'granted') {
             setTracking(true);
           } else if (result.state === 'prompt') {
-            toast.loading("Please allow location access");
+            toast.info("Please allow location access when prompted");
             setTracking(true);
-          } else {
-            toast.error("Location permission denied");
+          } else if (result.state === 'denied') {
+            toast.error("Location access is denied. Please enable location in your browser settings and try again.");
+            setLocationError("Location permission denied. Please check your browser settings.");
           }
+        }).catch(error => {
+          // Handle permission query error (fallback to just trying to get location)
+          toast.info("Requesting location access...");
+          setTracking(true);
         });
       } else {
         toast.error("Geolocation is not supported by your browser");
+        setLocationError("Geolocation is not supported by your browser");
       }
     } else {
       setTracking(false);
+      toast.info("Tracking stopped");
     }
   };
 
@@ -125,23 +177,25 @@ const GpsTracker = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {currentPosition && (
+        {currentPosition ? (
           <div className="h-[300px] mb-4 rounded-lg overflow-hidden">
             <MapContainer
-              center={[currentPosition.lat, currentPosition.lng]}
-              zoom={15}
               style={{ height: '100%', width: '100%' }}
+              zoom={15}
               zoomControl={true}
             >
+              <SetViewOnPositionChange position={currentPosition} />
+              
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
+              
               <Marker 
                 position={[currentPosition.lat, currentPosition.lng]}
                 icon={customIcon}
-              >
-              </Marker>
+              />
+              
               {routePath.length > 1 && (
                 <Polyline 
                   positions={routePath.map(pos => [pos.lat, pos.lng])}
@@ -149,6 +203,24 @@ const GpsTracker = () => {
                 />
               )}
             </MapContainer>
+          </div>
+        ) : locationError ? (
+          <div className="h-[100px] mb-4 bg-red-50 rounded-lg flex items-center justify-center p-4 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <AlertTriangle className="text-red-500 h-8 w-8" />
+              <p className="text-red-700">{locationError}</p>
+            </div>
+          </div>
+        ) : tracking ? (
+          <div className="h-[100px] mb-4 bg-blue-50 rounded-lg flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin h-8 w-8 border-4 border-fitness-primary border-t-transparent rounded-full"></div>
+              <p className="text-fitness-primary">Acquiring your location...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="h-[100px] mb-4 bg-gray-50 rounded-lg flex items-center justify-center">
+            <p className="text-gray-500">Start tracking to see your route on the map</p>
           </div>
         )}
         
