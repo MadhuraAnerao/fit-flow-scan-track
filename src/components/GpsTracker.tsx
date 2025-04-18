@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -114,21 +113,21 @@ const GpsTracker = () => {
         {currentPosition && (
           <div className="h-[300px] mb-4 rounded-lg overflow-hidden">
             <MapContainer
-              zoom={15}
-              scrollWheelZoom={false}
               style={{ height: '100%', width: '100%' }}
+              scrollWheelZoom={false}
+              center={[currentPosition.lat, currentPosition.lng]}
+              zoom={15}
             >
-              <MapView center={[currentPosition.lat, currentPosition.lng] as LatLngTuple} />
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <Marker 
-                position={[currentPosition.lat, currentPosition.lng] as LatLngTuple}
+                position={[currentPosition.lat, currentPosition.lng]}
                 icon={customIcon}
               />
               {routePath.length > 1 && (
                 <Polyline 
-                  positions={routePath.map(pos => [pos.lat, pos.lng] as LatLngTuple)}
+                  positions={routePath.map(pos => [pos.lat, pos.lng])}
                   pathOptions={{ color: 'red' }}
                 />
               )}
