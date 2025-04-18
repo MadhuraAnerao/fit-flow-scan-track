@@ -3,7 +3,7 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { 
   Home, Camera, QrCode, UtensilsCrossed, 
-  LineChart, User, Video
+  LineChart, User
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: "QR Scanner", path: "/qr-scanner", icon: QrCode },
     { name: "Camera", path: "/camera", icon: Camera },
     { name: "Recipes", path: "/recipes", icon: UtensilsCrossed },
-    { name: "Videos", path: "/recipe-videos", icon: Video },
     { name: "Calories", path: "/calories", icon: LineChart },
     { name: "Profile", path: "/profile", icon: User },
   ];
