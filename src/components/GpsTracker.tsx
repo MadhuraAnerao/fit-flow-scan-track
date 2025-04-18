@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Icon, LatLngTuple } from 'leaflet';
+import { Icon } from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
-import { Navigation2 } from 'lucide-react';
+import { Navigation2, MapPin } from 'lucide-react';
 
 // Fix the marker icon issue
 const customIcon = new Icon({
@@ -19,15 +20,6 @@ interface Position {
   lng: number;
 }
 
-// Helper component to handle center property
-const MapView = ({ center }: { center: LatLngTuple }) => {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center);
-  }, [center, map]);
-  return null;
-};
-
 const GpsTracker = () => {
   const [tracking, setTracking] = useState(false);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
@@ -40,8 +32,10 @@ const GpsTracker = () => {
 
     const startTracking = () => {
       if ("geolocation" in navigator) {
+        toast.loading("Accessing your location...");
         watchId = navigator.geolocation.watchPosition(
           (position) => {
+            toast.success("Location accessed successfully!");
             const newPosition = {
               lat: position.coords.latitude,
               lng: position.coords.longitude
@@ -101,6 +95,27 @@ const GpsTracker = () => {
     return R * c;
   };
 
+  const handleStartTracking = () => {
+    if (!tracking) {
+      if ("geolocation" in navigator) {
+        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+          if (result.state === 'granted') {
+            setTracking(true);
+          } else if (result.state === 'prompt') {
+            toast.loading("Please allow location access");
+            setTracking(true);
+          } else {
+            toast.error("Location permission denied");
+          }
+        });
+      } else {
+        toast.error("Geolocation is not supported by your browser");
+      }
+    } else {
+      setTracking(false);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -113,18 +128,20 @@ const GpsTracker = () => {
         {currentPosition && (
           <div className="h-[300px] mb-4 rounded-lg overflow-hidden">
             <MapContainer
-              style={{ height: '100%', width: '100%' }}
-              scrollWheelZoom={false}
               center={[currentPosition.lat, currentPosition.lng]}
               zoom={15}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={true}
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
               <Marker 
                 position={[currentPosition.lat, currentPosition.lng]}
                 icon={customIcon}
-              />
+              >
+              </Marker>
               {routePath.length > 1 && (
                 <Polyline 
                   positions={routePath.map(pos => [pos.lat, pos.lng])}
@@ -148,10 +165,11 @@ const GpsTracker = () => {
           </div>
           
           <Button 
-            onClick={() => setTracking(!tracking)} 
-            className="w-full"
+            onClick={handleStartTracking} 
+            className="w-full flex items-center justify-center gap-2"
             variant={tracking ? "destructive" : "default"}
           >
+            <MapPin className="h-4 w-4" />
             {tracking ? "Stop Tracking" : "Start Tracking"}
           </Button>
         </div>
