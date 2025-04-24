@@ -1,5 +1,5 @@
 
-#!/usr/bin/env node
+// Jest test runner script
 
 process.env.BABEL_ENV = 'test';
 process.env.NODE_ENV = 'test';
